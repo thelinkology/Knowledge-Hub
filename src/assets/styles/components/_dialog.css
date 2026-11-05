@@ -1,0 +1,36 @@
+@layer components {
+    .dialog {
+        outline: none;
+        @apply mx-auto;
+    }
+
+    .dialog-content {
+        transition: transform 0.15s ease-in-out;
+        transform: scale(0.9);
+        @apply p-6 rounded-2xl shadow-xl mx-4 my-8 sm:mx-0 sm:my-16 relative h-full bg-white dark:bg-gray-800;
+    }
+
+    .dialog-after-open .dialog-content {
+        transform: scale(1);
+    }
+
+    .dialog-before-close .dialog-content {
+        transform: scale(0.9);
+    }
+
+    .dialog-overlay {
+        transition: opacity 0.15s ease-in-out;
+        @apply inset-0 fixed z-40 bg-black/60 dark:bg-black/80 backdrop-blur-md;
+        /* A dialog taller than the window (small screens, browser zoom) scrolls instead of being cut off */
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .dialog-overlay-after-open {
+        opacity: 1;
+    }
+
+    .dialog-overlay-before-close {
+        opacity: 0;
+    }
+}

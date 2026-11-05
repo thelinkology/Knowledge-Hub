@@ -1,0 +1,22 @@
+.column-resizable {
+    @apply relative;
+}
+
+.resizer {
+    @apply absolute top-3 right-0 h-full w-[5px] cursor-col-resize opacity-0 hover:opacity-50 select-none touch-none;
+
+    &.resizing {
+        @apply opacity-100;
+    }
+}
+
+@media (max-width: 640px) {
+    .resizer {
+        display: none;
+    }
+}
+@media print {
+    .resizer {
+        display: none;
+    }
+}

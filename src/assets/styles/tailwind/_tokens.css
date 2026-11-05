@@ -1,0 +1,72 @@
+/*
+ * Design tokens. Tailwind colour names (tailwind.config.ts) point at these variables, so components use
+ * `bg-primary`, `text-gold`, `border-gray-700`… and never hex values.
+ *
+ * The primary family (--primary, --primary-deep, --primary-mild, --primary-subtle, --neutral) is also written
+ * at runtime by utils/applyThemeSchema from configs/preset-theme-schema.config — keep the two in step.
+ *
+ * Light is the default (a calm, Microsoft Learn-like reading surface with a Fluent-style blue).
+ * Dark keeps the same hues at accessible contrast. Tweak the brand by changing --primary* here and in
+ * configs/preset-theme-schema.config.
+ */
+
+:root {
+    --primary: #0f6cbd;
+    --primary-deep: #0c5395;
+    --primary-mild: #2886de;
+    --primary-subtle: rgb(15 108 189 / 0.1);
+    --neutral: #ffffff;
+
+    --gold: #8a5d00;
+    --gold-mild: #b07a12;
+    --gold-subtle: rgb(176 122 18 / 0.12);
+
+    --error: #dc2626;
+    --error-subtle: rgb(220 38 38 / 0.1);
+    --success: #15803d;
+    --success-subtle: rgb(21 128 61 / 0.1);
+    --warning: #c2410c;
+    --warning-subtle: rgb(194 65 12 / 0.1);
+    --info: #0f6cbd;
+    --info-subtle: rgb(15 108 189 / 0.1);
+
+    /* Blue-tinted neutrals: the same scale serves light surfaces (50–200) and dark surfaces (700–950). */
+    --gray-50: #f5f7fb;
+    --gray-100: #e9edf5;
+    --gray-200: #d3dae8;
+    --gray-300: #b3bed3;
+    --gray-400: #8a97b2;
+    /* 500 is the muted-text shade: ≥ 4.5:1 on white, gray-50 and gray-100 (WCAG AA); lighter in .dark */
+    --gray-500: #5f6c86;
+    --gray-600: #4a5670;
+    --gray-700: #263149;
+    --gray-800: #121a2e;
+    --gray-900: #0b1222;
+    --gray-950: #060a14;
+}
+
+.dark {
+    --primary: #479ef5;
+    --primary-deep: #2886de;
+    --primary-mild: #77b7f7;
+    --primary-subtle: rgb(71 158 245 / 0.14);
+    --neutral: #050b18;
+
+    --gold: #e8b64c;
+    --gold-mild: #f3cd78;
+    --gold-subtle: rgb(232 182 76 / 0.14);
+
+    /* Muted text on dark surfaces: ≥ 4.5:1 on gray-800, gray-900 and the page background */
+    --gray-500: #7d8aa5;
+
+    --error: #ff5d6c;
+    --error-subtle: rgb(255 93 108 / 0.14);
+    --success: #34d399;
+    --success-subtle: rgb(52 211 153 / 0.14);
+    --warning: #fb923c;
+    --warning-subtle: rgb(251 146 60 / 0.14);
+    --info: #479ef5;
+    --info-subtle: rgb(71 158 245 / 0.14);
+
+    color-scheme: dark;
+}

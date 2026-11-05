@@ -1,0 +1,26 @@
+# dependencies
+node_modules
+
+# next.js / vercel
+.next
+out
+.vercel
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# env — real secrets never get committed; .env.example documents the variables
+.env
+.env*.local
+
+# supabase cli
+supabase/.temp
+supabase/.branches
+
+# misc
+.DS_Store
+*.log
+coverage
+
+# playwright
+playwright-report/
+test-results/

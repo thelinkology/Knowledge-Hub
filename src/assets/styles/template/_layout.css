@@ -1,0 +1,22 @@
+/* App shell layout (template/PostLoginLayout, PageContainer, Footer, Logo) */
+@layer components {
+    .app-layout-collapsible-side {
+        @apply min-h-screen bg-gray-50 dark:bg-gray-950;
+    }
+
+    .page-container {
+        @apply min-w-0 flex-auto;
+    }
+
+    .footer {
+        @apply border-t border-gray-200 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400;
+    }
+
+    .logo {
+        @apply flex min-w-0 items-center;
+    }
+
+    .logo img {
+        @apply h-auto max-h-10 object-contain;
+    }
+}

@@ -1,0 +1,6 @@
+@layer components {
+    /* Above dialog and drawer overlays (z-40) and tooltips (z-50), so a toast is never hidden behind a modal */
+    .toast {
+        @apply fixed z-60;
+    }
+}

@@ -1,0 +1,104 @@
+@layer base {
+    /* Ecme base: Tailwind 4 borders default to currentColor; the template expects gray */
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--gray-200, currentColor);
+    }
+
+    .dark *,
+    .dark ::after,
+    .dark ::before {
+        border-color: var(--gray-700, currentColor);
+    }
+
+    button,
+    [role='button'] {
+        cursor: pointer;
+    }
+
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-rendering: optimizeLegibility;
+    }
+
+    body {
+        @apply bg-gray-50 text-gray-600 antialiased dark:bg-gray-950 dark:text-gray-300;
+        font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+        font-size: 0.9375rem;
+        line-height: 1.6;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-semibold text-gray-900 dark:text-gray-50;
+        line-height: 1.25;
+    }
+
+    h1 {
+        @apply text-3xl md:text-4xl;
+    }
+    h2 {
+        @apply text-2xl md:text-3xl;
+    }
+    h3 {
+        @apply text-xl md:text-2xl;
+    }
+    h4 {
+        @apply text-lg;
+    }
+    h5 {
+        @apply text-base;
+    }
+    h6 {
+        @apply text-sm;
+    }
+
+    /* Display face for brand, rank and title moments only — body copy stays in the reading face. */
+    .font-display {
+        font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: 0.02em;
+    }
+
+    a {
+        @apply transition-colors;
+    }
+
+    hr {
+        @apply border-gray-200 dark:border-gray-700;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-primary;
+    }
+
+    ::selection {
+        @apply bg-primary-subtle text-gray-900 dark:text-gray-50;
+    }
+
+    .text-muted {
+        @apply text-gray-500 dark:text-gray-400;
+    }
+
+    .text-gray {
+        @apply text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200;
+    }
+
+    .heading-text {
+        @apply text-gray-900 dark:text-gray-50;
+    }
+
+    .container {
+        @apply max-w-screen-2xl;
+    }
+
+    .sr-only-focusable:not(:focus) {
+        @apply sr-only;
+    }
+}

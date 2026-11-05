@@ -1,0 +1,97 @@
+/* Content rendering shared by the reader (MarkdownContent) and the editor (shared/editor): images, captions, callouts, videos */
+.lesson-content figure {
+    @apply my-6;
+}
+
+.lesson-content figure img {
+    @apply mx-auto my-0;
+}
+
+.lesson-content figcaption {
+    @apply mt-2 text-center text-sm text-gray-500 dark:text-gray-400;
+}
+
+.lesson-content img {
+    @apply h-auto max-w-full;
+}
+
+.callout {
+    @apply my-5 rounded-xl border-l px-4 py-3;
+}
+
+.callout > :last-child {
+    @apply mb-0;
+}
+
+.callout > :nth-child(2) {
+    @apply mt-0;
+}
+
+.callout-title {
+    @apply mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em];
+}
+
+.callout-note {
+    @apply border-info bg-info-subtle;
+}
+
+.callout-note .callout-title {
+    @apply text-info;
+}
+
+.callout-tip {
+    @apply border-success bg-success-subtle;
+}
+
+.callout-tip .callout-title {
+    @apply text-success;
+}
+
+.callout-important {
+    @apply border-primary bg-primary-subtle;
+}
+
+.callout-important .callout-title {
+    @apply text-primary;
+}
+
+.callout-warning {
+    @apply border-warning bg-warning-subtle;
+}
+
+.callout-warning .callout-title {
+    @apply text-warning;
+}
+
+.video-facade {
+    background:
+        radial-gradient(circle at 50% 40%, var(--primary-subtle), transparent 60%),
+        linear-gradient(135deg, #0b1220, #111827);
+}
+
+.lesson-editor {
+    @apply outline-none;
+}
+
+.lesson-editor p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    @apply pointer-events-none float-left h-0 text-gray-400 dark:text-gray-500;
+}
+
+.lesson-editor table td,
+.lesson-editor table th {
+    @apply relative border border-gray-200 px-3 py-2 align-top dark:border-gray-700;
+}
+
+.lesson-editor table .selectedCell::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0 bg-primary-subtle;
+}
+
+.lesson-editor table p {
+    @apply my-0;
+}
+
+.lesson-editor .ProseMirror-selectednode {
+    @apply rounded-lg ring-2 ring-primary;
+}

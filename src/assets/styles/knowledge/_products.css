@@ -1,0 +1,102 @@
+/*
+ * Product colours (products.theme → ProductThemeOptions.productThemeClass). Each theme sets two variables
+ * that ProductTag, cards and accents read, so components never carry hex values.
+ */
+
+.product-theme-blue {
+    --product-accent: #0f6cbd;
+    --product-subtle: rgb(15 108 189 / 0.1);
+}
+.product-theme-violet {
+    --product-accent: #6b46c1;
+    --product-subtle: rgb(107 70 193 / 0.1);
+}
+.product-theme-teal {
+    --product-accent: #0e7c86;
+    --product-subtle: rgb(14 124 134 / 0.1);
+}
+.product-theme-green {
+    --product-accent: #107c10;
+    --product-subtle: rgb(16 124 16 / 0.1);
+}
+.product-theme-amber {
+    --product-accent: #a35200;
+    --product-subtle: rgb(163 82 0 / 0.1);
+}
+.product-theme-rose {
+    --product-accent: #b4235a;
+    --product-subtle: rgb(180 35 90 / 0.1);
+}
+.product-theme-slate {
+    --product-accent: #4a5670;
+    --product-subtle: rgb(74 86 112 / 0.12);
+}
+
+/* Brighter on dark surfaces (≥ 4.5:1 on gray-800) */
+.dark .product-theme-blue,
+.dark.product-theme-blue {
+    --product-accent: #62abf5;
+    --product-subtle: rgb(98 171 245 / 0.14);
+}
+.dark .product-theme-violet,
+.dark.product-theme-violet {
+    --product-accent: #b197fc;
+    --product-subtle: rgb(177 151 252 / 0.14);
+}
+.dark .product-theme-teal,
+.dark.product-theme-teal {
+    --product-accent: #4fd1c5;
+    --product-subtle: rgb(79 209 197 / 0.14);
+}
+.dark .product-theme-green,
+.dark.product-theme-green {
+    --product-accent: #6ccb5f;
+    --product-subtle: rgb(108 203 95 / 0.14);
+}
+.dark .product-theme-amber,
+.dark.product-theme-amber {
+    --product-accent: #f7b955;
+    --product-subtle: rgb(247 185 85 / 0.14);
+}
+.dark .product-theme-rose,
+.dark.product-theme-rose {
+    --product-accent: #f687b3;
+    --product-subtle: rgb(246 135 179 / 0.14);
+}
+.dark .product-theme-slate,
+.dark.product-theme-slate {
+    --product-accent: #a7b3c9;
+    --product-subtle: rgb(167 179 201 / 0.14);
+}
+
+.product-tag {
+    color: var(--product-accent);
+    background-color: var(--product-subtle);
+    border-color: transparent;
+}
+
+.product-accent {
+    color: var(--product-accent);
+}
+
+.product-bar {
+    background-color: var(--product-accent);
+}
+
+/* Reader: the article body, the outline and printing */
+.article-outline a[aria-current='true'] {
+    @apply font-semibold text-primary;
+}
+
+@media print {
+    .no-print,
+    header.header,
+    nav,
+    aside.side-nav {
+        display: none !important;
+    }
+    .print-full {
+        max-width: none !important;
+        margin: 0 !important;
+    }
+}

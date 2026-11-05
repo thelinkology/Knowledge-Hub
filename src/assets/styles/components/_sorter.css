@@ -1,0 +1,13 @@
+.column-sortable {
+    .column-name {
+        @apply flex flex-row cursor-pointer select-none;
+    }
+}
+
+.sorter {
+    @apply cursor-pointer inline-flex;
+
+    &.sorting {
+        @apply text-primary;
+    }
+}

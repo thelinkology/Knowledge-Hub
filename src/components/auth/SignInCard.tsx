@@ -1,0 +1,152 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { Controller, FormProvider, useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import Alert from '@/components/ui/Alert'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import { Form, FormItem } from '@/components/ui/Form'
+import PasswordInput from './PasswordInput'
+import CheckEmailPanel from './CheckEmailPanel'
+import { SignInIcon } from '@/configs/icons.config'
+import { forgotPasswordPath, homePath, signUpPath } from '@/configs/app.config'
+import { authMessages } from '@/configs/authMessages.config'
+import { apiSignIn } from '@/services/misc'
+import { SignInSchema, type SignInInput } from '@/@types/auth/AuthSchema'
+import { getErrorCode, tryGetErrorMessage } from '@/utils/errors'
+
+export type SignInNotice = keyof typeof authMessages.notices
+
+interface SignInCardProps {
+    returnTo: string | null
+    notice: SignInNotice | null
+}
+
+const m = authMessages.signIn
+
+/** Only same-site paths are allowed as a return destination (no open redirects) */
+const safeReturnTo = (value: string | null) =>
+    value && value.startsWith('/') && !value.startsWith('//') ? value : homePath
+
+const NOTICE_TYPE: Record<SignInNotice, 'success' | 'info' | 'warning'> = {
+    signedOut: 'success',
+    emailConfirmed: 'success',
+    passwordUpdated: 'success',
+    linkExpired: 'warning',
+    sessionExpired: 'info',
+}
+
+export default function SignInCard({ returnTo, notice }: SignInCardProps) {
+    const [error, setError] = useState<{ text: string; code?: string } | null>(null)
+    const [resendFor, setResendFor] = useState<string | null>(null)
+    const form = useForm<SignInInput>({
+        resolver: zodResolver(SignInSchema),
+        defaultValues: { login: '', password: '' },
+    })
+    const {
+        control,
+        getValues,
+        formState: { errors, isSubmitting },
+    } = form
+
+    const onValid = async (input: SignInInput) => {
+        setError(null)
+        try {
+            await apiSignIn(input)
+            // Full navigation so the server renders the app with the new session cookie
+            window.location.assign(safeReturnTo(returnTo))
+        } catch (e) {
+            setError({ text: tryGetErrorMessage(e), code: getErrorCode(e) })
+        }
+    }
+
+    if (resendFor) return <CheckEmailPanel email={resendFor} />
+
+    return (
+        <>
+            <h1 className="mb-1 text-2xl">{m.title}</h1>
+            <p className="mb-6 text-gray-500 dark:text-gray-400">{m.subtitle}</p>
+            {notice && !error && (
+                <Alert showIcon type={NOTICE_TYPE[notice]} className="mb-5">
+                    {authMessages.notices[notice]}
+                </Alert>
+            )}
+            {error && (
+                <Alert showIcon type="danger" className="mb-5">
+                    {error.text}
+                    {error.code === 'EMAIL_NOT_CONFIRMED' && (
+                        <button
+                            type="button"
+                            className="ml-1 font-semibold underline"
+                            onClick={() => setResendFor(getValues('login'))}
+                        >
+                            {authMessages.checkEmail.resend}
+                        </button>
+                    )}
+                </Alert>
+            )}
+            <FormProvider {...form}>
+                <Form onSubmit={form.handleSubmit(onValid)} noValidate>
+                    <FormItem
+                        label={m.loginLabel}
+                        htmlFor="login"
+                        invalid={!!errors.login}
+                        errorMessage={errors.login?.message}
+                    >
+                        <Controller
+                            name="login"
+                            control={control}
+                            render={({ field }) => (
+                                <Input
+                                    id="login"
+                                    type="email"
+                                    autoCapitalize="none"
+                                    autoCorrect="off"
+                                    spellCheck={false}
+                                    autoComplete="username"
+                                    invalid={!!errors.login}
+                                    {...field}
+                                />
+                            )}
+                        />
+                    </FormItem>
+                    <FormItem
+                        label={m.passwordLabel}
+                        htmlFor="password"
+                        invalid={!!errors.password}
+                        errorMessage={errors.password?.message}
+                    >
+                        <Controller
+                            name="password"
+                            control={control}
+                            render={({ field }) => (
+                                <PasswordInput
+                                    id="password"
+                                    autoComplete="current-password"
+                                    invalid={!!errors.password}
+                                    {...field}
+                                />
+                            )}
+                        />
+                    </FormItem>
+                    <div className="-mt-2 mb-5 text-right">
+                        <Link href={forgotPasswordPath} className="text-sm font-semibold text-primary hover:underline">
+                            {m.forgotPassword}
+                        </Link>
+                    </div>
+                    <Button block variant="solid" type="submit" loading={isSubmitting} icon={<SignInIcon />}>
+                        {m.submit}
+                    </Button>
+                </Form>
+            </FormProvider>
+            <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                {m.noAccount}{' '}
+                <Link href={signUpPath} className="font-semibold text-primary hover:underline">
+                    {m.createAccount}
+                </Link>
+            </p>
+        </>
+    )
+}
