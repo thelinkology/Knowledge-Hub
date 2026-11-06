@@ -15,7 +15,7 @@ interface ChangeRoleDialogProps {
 }
 
 const roleConsequence: Record<Role, string> = {
-    viewer: 'Viewers read published knowledge, the library and client pages. They can’t edit anything.',
+    viewer: 'Viewers read published shared knowledge plus the knowledge of the clients they’re assigned to. They don’t see the library or client pages, and can’t edit anything.',
     editor: 'Editors write and publish knowledge and library assets, manage clients, and run discovery intakes and BRDs.',
     admin: 'Administrators can also invite people, change roles, edit products and intake rules, and issue Copilot API keys. Only give this to people who run the hub.',
 }

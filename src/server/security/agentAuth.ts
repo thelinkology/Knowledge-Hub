@@ -25,7 +25,7 @@ export async function authenticateAgent(req: NextRequest): Promise<AgentContext>
     const key = unwrapMaybe(
         await supabaseAdmin()
             .from('api_keys')
-            .select('id, client_id, last_used_at')
+            .select('id, all_clients, last_used_at, api_key_clients(client_id)')
             .eq('key_hash', hashApiKey(secret))
             .is('revoked_at', null)
             .maybeSingle(),
@@ -45,5 +45,8 @@ export async function authenticateAgent(req: NextRequest): Promise<AgentContext>
         if (error) console.error('[agent-auth] Couldn’t record key use', key.id, error.message)
     }
 
-    return { keyId: key.id, clientId: key.client_id }
+    return {
+        keyId: key.id,
+        clientIds: key.all_clients ? null : key.api_key_clients.map((link) => link.client_id),
+    }
 }

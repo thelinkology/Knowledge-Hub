@@ -23,7 +23,7 @@ components, deployed on Vercel. Conventions for contributors (human or AI) are i
 
 | Role | Can |
 |---|---|
-| Viewer (default for new accounts) | Read published knowledge, the library and client pages |
+| Viewer (default for new accounts) | Read published shared knowledge plus the knowledge of the clients an administrator assigns them to (Administration → Users & roles). No library or client pages |
 | Editor | Write and publish knowledge and library assets, manage clients, run intakes and BRDs |
 | Administrator | Everything, plus users & roles, products, intake questions and rules, Copilot API keys, audit log |
 

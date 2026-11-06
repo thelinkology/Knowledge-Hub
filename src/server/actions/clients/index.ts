@@ -8,6 +8,7 @@ import { hasPermission } from '@/@types/auth/Roles'
 import { slugify } from '@/utils/slugs'
 import type { SessionUser } from '@/@types/auth/SessionUser'
 import type { Client, ClientInput, ClientOption, ClientsQuery, ClientSummary } from '@/@types/clients/Client'
+import type { ClientScope } from '@/utils/clientScope'
 
 const SUMMARY_SELECT =
     'id, name, slug, industry, summary, status, product_ids, updated_at, owner:profiles!clients_owner_id_fkey(display_name)'
@@ -36,8 +37,14 @@ const mapSummary = (row: SummaryRow): ClientSummary => ({
     updatedAt: new Date(row.updated_at),
 })
 
-export async function getClients({ q, status }: ClientsQuery = {}): Promise<ClientSummary[]> {
+/** The clients list; `scope` limits it to those clients (viewers: their own, for the knowledge filters) */
+export async function getClients(
+    { q, status }: ClientsQuery = {},
+    scope: ClientScope = null,
+): Promise<ClientSummary[]> {
+    if (scope && !scope.length) return []
     let query = supabaseAdmin().from('clients').select(SUMMARY_SELECT).order('name').limit(1000)
+    if (scope) query = query.in('id', [...scope])
     if (status) query = query.eq('status', status)
     if (q) {
         const term = q.replace(/[%_,()\\]/g, ' ').trim()
@@ -61,6 +68,17 @@ export async function findClient(clientId: string) {
 /** Throws a 400 when a form refers to a client that doesn't exist */
 export async function assertClientExists(clientId: string | null) {
     if (clientId && !(await findClient(clientId))) throw new DataError('That client doesn’t exist.', 'CLIENT_NOT_FOUND')
+}
+
+/** Throws a 400 unless every id is an existing client; returns the ids without duplicates */
+export async function assertClientsExist(clientIds: readonly string[]): Promise<string[]> {
+    const unique = [...new Set(clientIds)]
+    if (!unique.length) return []
+    const found = unwrap(await supabaseAdmin().from('clients').select('id').in('id', unique), 'check the clients')
+    if (found.length !== unique.length) {
+        throw new DataError('One of those clients doesn’t exist any more. Reload and try again.', 'CLIENT_NOT_FOUND')
+    }
+    return unique
 }
 
 const count = async (table: 'articles' | 'library_assets', clientId: string, publishedOnly: boolean) => {

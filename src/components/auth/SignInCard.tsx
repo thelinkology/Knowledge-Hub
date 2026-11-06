@@ -16,6 +16,7 @@ import { authMessages } from '@/configs/authMessages.config'
 import { apiSendSignInLink, apiSignIn } from '@/services/misc'
 import { EmailSchema, SignInSchema, type SignInInput } from '@/@types/auth/AuthSchema'
 import { getErrorCode, tryGetErrorMessage } from '@/utils/errors'
+import { safeReturnPath } from '@/utils/returnTo'
 
 export type SignInNotice = keyof typeof authMessages.notices
 
@@ -26,9 +27,7 @@ interface SignInCardProps {
 
 const m = authMessages.signIn
 
-/** Only same-site paths are allowed as a return destination (no open redirects) */
-const safeReturnTo = (value: string | null) =>
-    value && value.startsWith('/') && !value.startsWith('//') ? value : homePath
+const safeReturnTo = (value: string | null) => safeReturnPath(value, homePath)
 
 const NOTICE_TYPE: Record<SignInNotice, 'success' | 'info' | 'warning'> = {
     signedOut: 'success',
@@ -68,7 +67,7 @@ export default function SignInCard({ returnTo, notice }: SignInCardProps) {
         clearErrors()
         setSendingLink(true)
         try {
-            await apiSendSignInLink({ email: email.data })
+            await apiSendSignInLink({ email: email.data, ...(returnTo ? { returnTo } : {}) })
             setLinkSentTo(email.data)
         } catch (e) {
             setError({ text: tryGetErrorMessage(e), code: getErrorCode(e) })

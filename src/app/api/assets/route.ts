@@ -4,7 +4,7 @@ import { createAsset, getAssets } from '@/server/actions/library'
 import { AssetsQuerySchema, NewAssetSchema } from '@/@types/library/Asset'
 
 /** The library (viewers: published only) */
-export const GET = apiAuthHandler('knowledge.read', async (req, _ctx, user) =>
+export const GET = apiAuthHandler('library.read', async (req, _ctx, user) =>
     getJsonResponse(await getAssets(user, AssetsQuerySchema.parse(readQuery(req)))),
 )
 

@@ -9,10 +9,12 @@ import type { SessionUser } from '@/@types/auth/SessionUser'
 import type { HomeOverview } from '@/@types/reports/Overview'
 import type { BrdStatus, BrdSummary } from '@/@types/brds/Brd'
 import type { Audience } from '@/@types/shared/PublishStatusOptions'
+import { clientScopeFilter, type ClientScope } from '@/utils/clientScope'
 
 /*
- * Reports: the home page overview. Viewers only get published knowledge and the client list; editors
- * also see drafts, discovery intakes and recent BRDs (editor-only data).
+ * Reports: the home page overview. Viewers only get published knowledge they can read (shared plus their
+ * own clients'); no library or client figures. Editors also see the library, clients, drafts, discovery
+ * intakes and recent BRDs.
  */
 
 const RECENT_ARTICLES = 6
@@ -21,10 +23,14 @@ const RECENT_BRDS = 5
 
 type CountedTable = 'articles' | 'library_assets' | 'clients' | 'intakes'
 
-/** Number of rows (optionally with one status); `head: true` returns no rows, only the count */
-async function countRows(table: CountedTable, status?: 'published' | 'draft') {
+/**
+ * Number of rows (optionally with one status, and for articles within a client scope); `head: true`
+ * returns no rows, only the count
+ */
+async function countRows(table: CountedTable, status?: 'published' | 'draft', scope: ClientScope = null) {
     let query = supabaseAdmin().from(table).select('id', { count: 'exact', head: true })
     if (status && (table === 'articles' || table === 'library_assets')) query = query.eq('status', status)
+    if (scope && table === 'articles') query = query.or(clientScopeFilter(scope))
     const result = await query
     check(result, 'count what’s in the hub')
     return result.count ?? 0
@@ -60,6 +66,7 @@ async function getRecentArticles(user: SessionUser) {
     query = canEdit(user)
         ? query.neq('status', 'archived').order('updated_at', { ascending: false })
         : query.eq('status', 'published').order('published_at', { ascending: false, nullsFirst: false })
+    if (user.clientIds) query = query.or(clientScopeFilter(user.clientIds))
     return unwrap(await query, 'load recent articles').map((row) =>
         mapArticleSummary(row as unknown as ArticleSummaryRow),
     )
@@ -87,14 +94,16 @@ async function getRecentClients() {
 export async function getHomeOverview(user: SessionUser): Promise<HomeOverview> {
     const editor = canEdit(user)
     const requirements = hasPermission(user.role, 'requirements.manage')
+    const library = hasPermission(user.role, 'library.read')
+    const seesClients = hasPermission(user.role, 'clients.read')
     const [articles, assets, clients, intakes, drafts, recentArticles, recentClients, recentBrds] = await Promise.all([
-        countRows('articles', 'published'),
-        countRows('library_assets', 'published'),
-        countRows('clients'),
+        countRows('articles', 'published', user.clientIds),
+        library ? countRows('library_assets', 'published') : Promise.resolve(0),
+        seesClients ? countRows('clients') : Promise.resolve(0),
         requirements ? countRows('intakes') : Promise.resolve(0),
         editor ? countRows('articles', 'draft') : Promise.resolve(0),
         getRecentArticles(user),
-        getRecentClients(),
+        seesClients ? getRecentClients() : Promise.resolve([]),
         requirements ? getRecentBrds() : Promise.resolve([]),
     ])
     return {

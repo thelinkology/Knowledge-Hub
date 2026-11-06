@@ -1,6 +1,12 @@
 /** Query parameter carrying where to go after signing in */
 export const RETURN_TO_URL_KEY = 'returnTo'
 
+/**
+ * Cookie remembering where someone was going when they asked for a sign-in link (e.g. an article an agent
+ * linked to), so the link brings them back there. The email templates always say next=/.
+ */
+export const RETURN_TO_COOKIE = 'kh_return_to'
+
 /** Pages reachable without signing in (the proxy lets these through) */
 export const PUBLIC_PATHS = ['/login', '/welcome', '/forgot-password', '/reset-password', '/privacy', '/auth']
 

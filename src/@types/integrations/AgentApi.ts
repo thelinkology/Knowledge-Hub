@@ -5,10 +5,13 @@ import { z } from 'zod'
  * ISO strings; `url` is an absolute link to the page in Knowledge Hub that an agent can cite.
  */
 
-/** The authenticated key: its id and, for a client-scoped key, the one client it may read */
+/**
+ * The authenticated key: its id and the clients it may read besides shared knowledge (null = every
+ * client; an empty list = shared knowledge only)
+ */
 export interface AgentContext {
     keyId: string
-    clientId: string | null
+    clientIds: string[] | null
 }
 
 export interface AgentClientRef {

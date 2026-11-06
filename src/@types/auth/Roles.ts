@@ -6,7 +6,9 @@ export type Role = (typeof ROLES)[number]
  * actions with `useSession().can(permission)` — the server check is the one that counts.
  */
 export const PERMISSIONS = [
-    'knowledge.read', // read published knowledge, the library and client pages
+    'knowledge.read', // read published knowledge (viewers: shared knowledge and their own clients' only)
+    'library.read', // the library (scripts, components, reference architectures)
+    'clients.read', // the client pages, and every client's knowledge
     'knowledge.manage', // write and publish articles, collections and library assets
     'clients.manage', // create and edit clients
     'requirements.manage', // discovery intakes and BRDs
@@ -18,9 +20,18 @@ export type Permission = (typeof PERMISSIONS)[number]
 
 export const rolePermissions: Record<Role, readonly Permission[]> = {
     viewer: ['knowledge.read'],
-    editor: ['knowledge.read', 'knowledge.manage', 'clients.manage', 'requirements.manage'],
+    editor: [
+        'knowledge.read',
+        'library.read',
+        'clients.read',
+        'knowledge.manage',
+        'clients.manage',
+        'requirements.manage',
+    ],
     admin: [
         'knowledge.read',
+        'library.read',
+        'clients.read',
         'knowledge.manage',
         'clients.manage',
         'requirements.manage',

@@ -73,9 +73,10 @@ export default function CopilotSetupGuide({ onCreateKey }: { onCreateKey: () => 
             <div className="mb-6 flex gap-3 rounded-xl bg-info-subtle p-3 text-sm text-info">
                 <InfoIcon className="mt-0.5 shrink-0 text-lg" aria-hidden />
                 <p>
-                    Agents only get <strong>published</strong> articles and library assets, read-only. A key limited to
-                    one client sees that client’s knowledge plus shared knowledge, nothing else. Each key may make up to
-                    300 requests a minute.
+                    Agents only get <strong>published</strong> articles and library assets, read-only. A key reads
+                    shared knowledge plus the knowledge of the clients you assign to it, nothing else. Links in its
+                    answers open Knowledge Hub, which asks people to sign in first. Each key may make up to 300 requests
+                    a minute.
                 </p>
             </div>
 

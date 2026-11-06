@@ -7,8 +7,13 @@ export interface UserAccount {
     email: string
     displayName: string
     role: Role
+    /** The clients they're assigned to: a viewer reads shared knowledge plus these clients' knowledge */
+    clients: { id: string; name: string }[]
     createdAt: Date
 }
+
+/** The clients a viewer is assigned to (several allowed; none = shared knowledge only) */
+const ClientIdsSchema = z.array(z.string().uuid()).max(200, 'Pick at most 200 clients')
 
 /** Someone who can be an owner (editors and admins) */
 export interface PersonOption {
@@ -26,7 +31,10 @@ export type UsersQuery = z.infer<typeof UsersQuerySchema>
 export const SetRoleSchema = z.object({ role: z.enum(ROLES) })
 export type SetRoleInput = z.infer<typeof SetRoleSchema>
 
-/** POST /api/admin/users — invites someone by email with a role */
+/** PUT /api/admin/users/[userId]/clients — replaces the person's clients */
+export const SetUserClientsSchema = z.object({ clientIds: ClientIdsSchema })
+export type SetUserClientsInput = z.infer<typeof SetUserClientsSchema>
+
 /** How a new account gets in: an emailed invitation, or a password the administrator sets and shares */
 export const ACCESS_METHODS = ['email', 'password'] as const
 export type AccessMethod = (typeof ACCESS_METHODS)[number]
@@ -39,6 +47,7 @@ export const InviteUserSchema = z
         role: z.enum(ROLES).default('viewer'),
         method: z.enum(ACCESS_METHODS).default('email'),
         password: z.string().max(72).default(''),
+        clientIds: ClientIdsSchema.default([]),
     })
     .superRefine((input, ctx) => {
         if (input.method !== 'password') return

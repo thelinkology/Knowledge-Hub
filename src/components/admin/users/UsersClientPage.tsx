@@ -17,7 +17,8 @@ import UserAvatar from '@/components/shared/UserAvatar'
 import ChangeRoleDialog from './ChangeRoleDialog'
 import DeleteAccountDialog from './DeleteAccountDialog'
 import InviteUserDialog from './InviteUserDialog'
-import { AddUserIcon, DeleteIcon, EmailIcon, PeopleIcon, SearchIcon } from '@/configs/icons.config'
+import UserClientsDialog from './UserClientsDialog'
+import { AddUserIcon, DeleteIcon, EditIcon, EmailIcon, PeopleIcon, SearchIcon } from '@/configs/icons.config'
 import { toastError, toastSuccess } from '@/components/ui/toast/toast'
 import { apiSendUserSignInLink } from '@/services/users'
 import { tryGetErrorMessage } from '@/utils/errors'
@@ -84,6 +85,7 @@ export default function UsersClientPage() {
 
     const [roleChange, setRoleChange] = useState<{ user: UserAccount; role: Role } | null>(null)
     const [deleting, setDeleting] = useState<UserAccount | null>(null)
+    const [editingClients, setEditingClients] = useState<UserAccount | null>(null)
     /** The account a sign-in link is being emailed to */
     const [sendingLinkTo, setSendingLinkTo] = useState<string | null>(null)
 
@@ -108,7 +110,7 @@ export default function UsersClientPage() {
             <PageHeader
                 eyebrow="Administration"
                 title="Users & roles"
-                description="Viewers read published knowledge. Editors write knowledge, manage clients and create intakes and BRDs. Administrators also manage settings, agent keys and people. Changes are recorded in the audit log."
+                description="Viewers read published shared knowledge plus the knowledge of the clients they’re assigned to. Editors write knowledge, manage clients and create intakes and BRDs. Administrators also manage settings, agent keys and people. Changes are recorded in the audit log."
                 actions={
                     <Button variant="solid" size="sm" icon={<AddUserIcon />} onClick={() => setInviting(true)}>
                         Add someone
@@ -163,6 +165,7 @@ export default function UsersClientPage() {
                                         <Tr>
                                             <Th>Name</Th>
                                             <Th>Role</Th>
+                                            <Th>Clients</Th>
                                             <Th>Joined</Th>
                                             <Th>
                                                 <span className="sr-only">Actions</span>
@@ -227,6 +230,37 @@ export default function UsersClientPage() {
                                                             roleSelect
                                                         )}
                                                     </Td>
+                                                    <Td>
+                                                        <div className="flex max-w-xs flex-wrap items-center gap-1.5">
+                                                            {account.role !== 'viewer' ? (
+                                                                <span className="text-sm text-gray-500">
+                                                                    All clients
+                                                                </span>
+                                                            ) : account.clients.length ? (
+                                                                account.clients.map((client) => (
+                                                                    <span
+                                                                        key={client.id}
+                                                                        className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+                                                                    >
+                                                                        {client.name}
+                                                                    </span>
+                                                                ))
+                                                            ) : (
+                                                                <span className="text-sm text-gray-500">
+                                                                    Shared only
+                                                                </span>
+                                                            )}
+                                                            <Tooltip title="Assign clients">
+                                                                <Button
+                                                                    size="xs"
+                                                                    variant="plain"
+                                                                    icon={<EditIcon />}
+                                                                    aria-label={`Assign clients to ${account.displayName}`}
+                                                                    onClick={() => setEditingClients(account)}
+                                                                />
+                                                            </Tooltip>
+                                                        </div>
+                                                    </Td>
                                                     <Td className="whitespace-nowrap">
                                                         {formatDate(account.createdAt)}
                                                     </Td>
@@ -282,6 +316,7 @@ export default function UsersClientPage() {
                 onClose={() => setRoleChange(null)}
             />
             {inviting && <InviteUserDialog onClose={() => setInviting(false)} />}
+            {editingClients && <UserClientsDialog user={editingClients} onClose={() => setEditingClients(null)} />}
             <DeleteAccountDialog
                 user={deleting}
                 onClose={() => setDeleting(null)}

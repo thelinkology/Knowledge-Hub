@@ -52,8 +52,8 @@ const navigationConfig: NavigationTree[] = [
     section('workspace', 'Workspace', [
         item('home', homePath, 'Home', 'dashboard'),
         item('knowledge', knowledgePath, 'Knowledge', 'knowledge', ['knowledge.read']),
-        item('library', libraryPath, 'Library', 'library', ['knowledge.read']),
-        item('clients', clientsPath, 'Clients', 'clients', ['knowledge.read']),
+        item('library', libraryPath, 'Library', 'library', ['library.read']),
+        item('clients', clientsPath, 'Clients', 'clients', ['clients.read']),
     ]),
     section('requirements', 'Requirements', [
         item('intakes', intakesPath, 'Discovery intakes', 'intake', ['requirements.manage']),

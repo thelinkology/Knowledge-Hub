@@ -1,9 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyEmailLink } from '@/server/actions/auth'
-
-/** Only same-site paths may be used as the destination (no open redirects) */
-const safeNext = (value: string | null, fallback: string) =>
-    value && value.startsWith('/') && !value.startsWith('//') ? value : fallback
+import { RETURN_TO_COOKIE } from '@/constants/auth.constant'
+import { isSafeReturnPath, safeReturnPath } from '@/utils/returnTo'
 
 const field = (form: FormData, name: string) => {
     const value = form.get(name)
@@ -26,10 +24,15 @@ export async function POST(req: NextRequest) {
     const form = await req.formData().catch(() => null)
     const type = form ? field(form, 'type') : null
     const ok =
-        !!form &&
-        (await verifyEmailLink({ code: field(form, 'code'), tokenHash: field(form, 'token_hash'), type }))
+        !!form && (await verifyEmailLink({ code: field(form, 'code'), tokenHash: field(form, 'token_hash'), type }))
     if (!ok) return redirectTo(req, type === 'recovery' ? '/forgot-password?error=link' : '/login?error=link')
 
     const fallback = type === 'recovery' || type === 'invite' ? '/reset-password' : '/?welcome=1'
-    return redirectTo(req, safeNext(form ? field(form, 'next') : null, fallback))
+    let next = safeReturnPath(form ? field(form, 'next') : null, fallback)
+    // A sign-in link asked for on the way to a page (e.g. an article an agent linked to) goes back there
+    const remembered = req.cookies.get(RETURN_TO_COOKIE)?.value
+    if ((type === 'email' || type === 'magiclink') && next === '/' && isSafeReturnPath(remembered)) next = remembered
+    const response = redirectTo(req, next)
+    response.cookies.delete({ name: RETURN_TO_COOKIE, path: '/auth' })
+    return response
 }

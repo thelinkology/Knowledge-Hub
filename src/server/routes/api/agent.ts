@@ -13,7 +13,7 @@ type AgentRouteHandler<P extends Record<string, string>> = (
 /**
  * Wraps an agent API route (/api/v1, read-only): authenticates the API key (401), applies the per-key rate
  * limit (429) and turns thrown errors into JSON. Export it as `GET` only — the agent API never writes.
- * The handler must respect `agent.clientId` (a client-scoped key reads that client's + shared knowledge).
+ * The handler must respect `agent.clientIds` (a key reads shared knowledge plus its clients' knowledge).
  */
 export const agentHandler = <P extends Record<string, string> = Record<string, string>>(
     handler: AgentRouteHandler<P>,

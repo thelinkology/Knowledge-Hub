@@ -57,11 +57,14 @@ Agent:  Copilot Studio ─► app/api/v1/* ─► agentHandler (API key, rate li
 | `intake_rules` | kind gotcha/best_practice, match all/any, conditions jsonb, guidance, show_to_customer, linked article/asset ids |
 | `intakes` | client, products in scope, `answers` jsonb, notes, status |
 | `brds` | client, intake, audience, status draft/final, body, milestones jsonb |
-| `api_keys` | sha256 `key_hash`, prefix, optional client scope, revoked/last used — server-only (no RLS read) |
+| `api_keys` | sha256 `key_hash`, prefix, `all_clients`, AES-GCM `secret_ciphertext` (shown again via `server/security/secretBox`), revoked/last used — server-only (no RLS read) |
+| `api_key_clients` | the clients a key reads besides shared knowledge — server-only |
+| `client_members` | the clients a person is assigned to; a viewer reads shared knowledge + these clients' (`SessionUser.clientIds`, `utils/clientScope`) |
 | `audit_events`, `rate_limit_hits` | ops |
 
-RLS: viewers read published collections/articles/assets, clients, products, questions; editors also read drafts,
-revisions, rules, intakes, BRDs; admins read the audit log. No browser-role writes anywhere.
+RLS: viewers read published shared collections/articles plus their own clients' (`can_read_client`), their own clients,
+products and questions — no library; editors read every client, the library, drafts, revisions, rules, intakes, BRDs;
+admins read the audit log. No browser-role writes anywhere. Permissions `library.read` / `clients.read` are editor+.
 
 | SQL function | What |
 |---|---|

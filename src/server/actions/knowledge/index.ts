@@ -27,6 +27,7 @@ import {
     type TreeLink,
 } from '@/utils/articleTree'
 import { getArticlePath, getAssetPath } from '@/configs/app.config'
+import { clientScopeFilter, inClientScope, searchClientIds, type ClientScope } from '@/utils/clientScope'
 import { ConflictError, DataError, NotFoundError } from '@/@types/errors'
 import { hasPermission } from '@/@types/auth/Roles'
 import type { SessionUser } from '@/@types/auth/SessionUser'
@@ -47,8 +48,9 @@ import type { SearchQuery, SearchResult } from '@/@types/knowledge/Search'
 
 /*
  * Knowledge: collections (ordered groups, like Microsoft Learn modules) and articles. Viewers only ever
- * get published items; editors also see drafts and archived ones. Writes are made by editors (the
- * routes check `knowledge.manage`) after the checks here.
+ * get published items, and only shared knowledge plus their own clients' (SessionUser.clientIds); anything
+ * else is a 404, like something that doesn't exist. Editors also see drafts and archived ones, for every
+ * client. Writes are made by editors (the routes check `knowledge.manage`) after the checks here.
  */
 
 export const canEdit = (user: SessionUser) => hasPermission(user.role, 'knowledge.manage')
@@ -70,6 +72,13 @@ export async function getCollections(
         .limit(500)
     if (!canEdit(user)) query = query.eq('status', 'published').eq('articles.status', 'published')
     else query = query.neq('status', 'archived')
+    if (clientId && !inClientScope(user.clientIds, clientId)) return []
+    if (user.clientIds) {
+        // Only shared and own-client collections, and (for the counts) only articles they can open
+        query = query
+            .or(clientScopeFilter(user.clientIds))
+            .or(clientScopeFilter(user.clientIds), { referencedTable: 'articles' })
+    }
     if (clientId) query = query.eq('client_id', clientId)
     if (productId) query = query.eq('product_id', productId)
     return unwrap(await query, 'load collections').map((row) => mapCollection(row as unknown as CollectionRow))
@@ -94,8 +103,10 @@ export async function getCollection(
         await supabaseAdmin().from('collections').select(COLLECTION_SELECT).eq('id', collectionId).maybeSingle(),
         'load the collection',
     )
-    if (!row || (!canEdit(user) && row.status !== 'published')) throw collectionNotFound()
-    const list = await loadCollectionArticles(collectionId, canEdit(user))
+    if (!row || (!canEdit(user) && row.status !== 'published') || !inClientScope(user.clientIds, row.client_id)) {
+        throw collectionNotFound()
+    }
+    const list = await loadCollectionArticles(collectionId, canEdit(user), user.clientIds)
     return {
         collection: { ...mapCollection(row as unknown as CollectionRow), articleCount: list.length },
         articles: list,
@@ -112,10 +123,15 @@ async function collectionLinks(collectionId: string): Promise<TreeLink[]> {
 }
 
 /**
- * A collection's articles (editors: everything but archived; viewers: published only), each attached to
- * its nearest visible ancestor, so a published sub-article of a draft still shows in the tree.
+ * A collection's articles (editors: everything but archived; viewers: published only, within their client
+ * scope), each attached to its nearest visible ancestor, so a published sub-article of a draft still shows
+ * in the tree.
  */
-async function loadCollectionArticles(collectionId: string, includeDrafts: boolean): Promise<ArticleSummary[]> {
+async function loadCollectionArticles(
+    collectionId: string,
+    includeDrafts: boolean,
+    scope: ClientScope = null,
+): Promise<ArticleSummary[]> {
     let query = supabaseAdmin()
         .from('articles')
         .select(ARTICLE_SUMMARY_SELECT)
@@ -123,6 +139,7 @@ async function loadCollectionArticles(collectionId: string, includeDrafts: boole
         .order('position')
         .order('title')
     query = includeDrafts ? query.neq('status', 'archived') : query.eq('status', 'published')
+    if (scope) query = query.or(clientScopeFilter(scope))
     const [rows, links] = await Promise.all([query, collectionLinks(collectionId)])
     const list = attachToVisibleAncestors(
         unwrap(rows, 'load the articles').map((a) => mapArticleSummary(a as unknown as ArticleSummaryRow)),
@@ -242,6 +259,8 @@ export async function getArticles(user: SessionUser, query: ArticlesQuery): Prom
     if (!canEdit(user)) q = q.eq('status', 'published')
     else if (query.status) q = q.eq('status', query.status)
     else q = q.neq('status', 'archived')
+    if (query.clientId && !inClientScope(user.clientIds, query.clientId)) return []
+    if (user.clientIds) q = q.or(clientScopeFilter(user.clientIds))
     if (query.clientId) q = q.eq('client_id', query.clientId)
     else if (query.scope === 'shared') q = q.is('client_id', null)
     if (query.productId) q = q.eq('product_id', query.productId)
@@ -261,6 +280,7 @@ async function withParentTitles(user: SessionUser, list: ArticleSummary[]): Prom
     if (!parentIds.length) return list.map((a) => ({ ...a, parentTitle: null }))
     let query = supabaseAdmin().from('articles').select('id, title').in('id', parentIds)
     query = canEdit(user) ? query.neq('status', 'archived') : query.eq('status', 'published')
+    if (user.clientIds) query = query.or(clientScopeFilter(user.clientIds))
     const titles = new Map(unwrap(await query, 'load articles').map((row) => [row.id, row.title]))
     return list.map((a) => ({ ...a, parentTitle: a.parentId ? (titles.get(a.parentId) ?? null) : null }))
 }
@@ -273,10 +293,14 @@ async function loadArticle(articleId: string): Promise<Article | null> {
     return row ? mapArticle(row as unknown as ArticleRow) : null
 }
 
-/** The reader view. Viewers get 404 for anything unpublished, so drafts can't be probed. */
+/**
+ * The reader view. Viewers get 404 for anything unpublished or for another client, so neither can be
+ * probed.
+ */
 export async function getArticleView(user: SessionUser, articleId: string): Promise<ArticleView> {
     const article = await loadArticle(articleId)
     if (!article || (!canEdit(user) && article.status !== 'published')) throw notFound()
+    if (!inClientScope(user.clientIds, article.clientId)) throw notFound()
     if (!article.collectionId) return { article, collection: null }
     const { collection, articles } = await getCollection(user, article.collectionId).catch(() => ({
         collection: null,
@@ -566,16 +590,25 @@ export async function restoreArticleRevision(user: SessionUser, articleId: strin
 
 // ── Search ────────────────────────────────────────────────────────────────────────────────────────
 
-/** Ranked full-text search over articles and library assets (public.search_knowledge) */
+/**
+ * Ranked full-text search over articles and library assets (public.search_knowledge): shared knowledge
+ * plus the clients in `scope` (null = every client), narrowed to `query.clientId` when given (a client
+ * outside the scope finds nothing). `assets` false = articles only (people without the library).
+ */
 export async function searchKnowledge(
     query: SearchQuery,
-    { includeDrafts, clientScope }: { includeDrafts: boolean; clientScope?: string | null },
+    { includeDrafts, scope, assets = true }: { includeDrafts: boolean; scope: ClientScope; assets?: boolean },
 ): Promise<SearchResult[]> {
+    const clientIds = searchClientIds(scope, query.clientId)
+    if (clientIds === undefined) return []
+    const types = query.type === 'all' ? ['article', 'asset'] : [query.type]
+    const allowed = assets ? types : types.filter((type) => type === 'article')
+    if (!allowed.length) return []
     const result = await supabaseAdmin().rpc('search_knowledge', {
         p_query: query.q,
-        p_client_id: (clientScope ?? query.clientId ?? null) as string,
+        p_client_ids: clientIds as string[],
         p_product_id: (query.productId ?? null) as string,
-        p_types: query.type === 'all' ? ['article', 'asset'] : [query.type],
+        p_types: allowed,
         p_include_drafts: includeDrafts,
         p_limit: query.limit,
     })

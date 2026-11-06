@@ -23,6 +23,7 @@ import { ASSET_KINDS, assetKindIcon, type AssetKind } from '@/@types/library/Ass
 import { formatDate } from '@/utils/dates'
 import { tryGetErrorMessage } from '@/utils/errors'
 import classNames from '@/utils/classNames'
+import useSession from '@/utils/hooks/useSession'
 import type { SearchResult } from '@/@types/knowledge/Search'
 import type { ClientSummary } from '@/@types/clients/Client'
 import type { Product } from '@/@types/products/Product'
@@ -47,9 +48,12 @@ interface SearchResultsProps {
 
 /** Ranked results for ?q= across articles and library assets (editors also find drafts) */
 export default function SearchResults({ filters, products, clients, onChange }: SearchResultsProps) {
+    const { can } = useSession()
+    // People without the library (viewers) only search articles
+    const library = can('library.read')
     const clientId = filters.client && filters.client !== SHARED_CLIENT ? filters.client : undefined
     // An article-type filter only makes sense for articles
-    const type = filters.kind ? 'article' : filters.type
+    const type = filters.kind || !library ? 'article' : filters.type
     const search = useSWRSearch({
         q: filters.q,
         productId: filters.product || undefined,
@@ -69,7 +73,7 @@ export default function SearchResults({ filters, products, clients, onChange }: 
     )
     const clientNames = useMemo(() => new Map((clients ?? []).map((c) => [c.id, c.name])), [clients])
 
-    const narrowed = hasNarrowingFilters(filters) || type !== 'all'
+    const narrowed = hasNarrowingFilters(filters) || (library && type !== 'all')
 
     return (
         <section aria-labelledby="search-results-heading">
@@ -79,22 +83,24 @@ export default function SearchResults({ filters, products, clients, onChange }: 
                         ? `Searching for “${filters.q}”…`
                         : `${results.length}${results.length === SEARCH_LIMIT ? '+' : ''} result${results.length === 1 ? '' : 's'} for “${filters.q}”`}
                 </h2>
-                <Segment
-                    size="sm"
-                    value={type}
-                    onChange={(value) => {
-                        if (typeof value !== 'string' || !value) return // clicking the active filter keeps it
-                        // Library assets have no article type, so leaving "Articles" clears that filter
-                        onChange({ type: value as BrowseSearchType, ...(value !== 'article' ? { kind: '' } : {}) })
-                    }}
-                    aria-label="What to search"
-                >
-                    {TYPE_FILTERS.map((filter) => (
-                        <Segment.Item key={filter.value} value={filter.value} type="button">
-                            {filter.label}
-                        </Segment.Item>
-                    ))}
-                </Segment>
+                {library && (
+                    <Segment
+                        size="sm"
+                        value={type}
+                        onChange={(value) => {
+                            if (typeof value !== 'string' || !value) return // clicking the active filter keeps it
+                            // Library assets have no article type, so leaving "Articles" clears that filter
+                            onChange({ type: value as BrowseSearchType, ...(value !== 'article' ? { kind: '' } : {}) })
+                        }}
+                        aria-label="What to search"
+                    >
+                        {TYPE_FILTERS.map((filter) => (
+                            <Segment.Item key={filter.value} value={filter.value} type="button">
+                                {filter.label}
+                            </Segment.Item>
+                        ))}
+                    </Segment>
+                )}
             </div>
 
             {search.error && !search.data ? (

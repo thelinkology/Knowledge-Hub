@@ -32,12 +32,12 @@ const SUPABASE_SHIM = `
     alter default privileges in schema public grant all on sequences to service_role;
 `
 
-/** A fresh in-memory Postgres with every migration applied. */
-export async function createTestDb() {
+/** A fresh in-memory Postgres with every migration applied (or only those `only` accepts, in order). */
+export async function createTestDb(only: (file: string) => boolean = () => true) {
     const db = new PGlite()
     await db.exec(SUPABASE_SHIM)
     for (const file of readdirSync(MIGRATIONS_DIR)
-        .filter((f) => f.endsWith('.sql'))
+        .filter((f) => f.endsWith('.sql') && only(f))
         .sort()) {
         try {
             await db.exec(readFileSync(join(MIGRATIONS_DIR, file), 'utf8'))

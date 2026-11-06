@@ -141,6 +141,7 @@ export const HidePasswordIcon = TbEyeOff
 export const EmailIcon = TbMail
 export const PasswordIcon = TbKey
 export const KeyIcon = TbKey
+export const ViewIcon = TbEye
 export const LinkIcon = TbLink
 export const ExternalLinkIcon = TbExternalLink
 export const UploadIcon = TbUpload

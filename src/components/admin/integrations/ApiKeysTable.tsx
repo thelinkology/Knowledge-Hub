@@ -7,7 +7,8 @@ import Tooltip from '@/components/ui/Tooltip'
 import EmptyState from '@/components/shared/EmptyState'
 import ErrorState from '@/components/shared/ErrorState'
 import Loading from '@/components/shared/Loading'
-import { AddIcon, KeyIcon, RevokeKeyIcon } from '@/configs/icons.config'
+import ApiKeyAccessLabel from './ApiKeyAccessLabel'
+import { AddIcon, EditIcon, KeyIcon, RevokeKeyIcon, ViewIcon } from '@/configs/icons.config'
 import { useApiKeysStore } from '@/stores/SettingsStores'
 import { formatDate, formatDateTime, fromNow } from '@/utils/dates'
 import type { ApiKey } from '@/@types/integrations/ApiKey'
@@ -16,6 +17,8 @@ const { THead, TBody, Tr, Th, Td } = Table
 
 interface ApiKeysTableProps {
     onCreate: () => void
+    onEdit: (apiKey: ApiKey) => void
+    onReveal: (apiKey: ApiKey) => void
     onRevoke: (apiKey: ApiKey) => void
 }
 
@@ -33,7 +36,7 @@ function KeyStatus({ apiKey }: { apiKey: ApiKey }) {
 }
 
 /** The agent API keys: who made them, what they can read, when they were last used */
-export default function ApiKeysTable({ onCreate, onRevoke }: ApiKeysTableProps) {
+export default function ApiKeysTable({ onCreate, onEdit, onReveal, onRevoke }: ApiKeysTableProps) {
     const keys = useApiKeysStore((s) => s.data)
     const loading = useApiKeysStore((s) => s.loading)
     const validating = useApiKeysStore((s) => s.validating)
@@ -81,14 +84,7 @@ export default function ApiKeysTable({ onCreate, onRevoke }: ApiKeysTableProps) 
                                         </code>
                                     </Td>
                                     <Td className="text-sm">
-                                        {apiKey.clientName ? (
-                                            <span>
-                                                {apiKey.clientName}
-                                                <span className="block text-xs text-gray-500">+ shared knowledge</span>
-                                            </span>
-                                        ) : (
-                                            <span className="text-gray-600 dark:text-gray-300">All clients</span>
-                                        )}
+                                        <ApiKeyAccessLabel apiKey={apiKey} />
                                     </Td>
                                     <Td className="text-sm whitespace-nowrap">
                                         {formatDate(apiKey.createdAt)}
@@ -108,7 +104,36 @@ export default function ApiKeysTable({ onCreate, onRevoke }: ApiKeysTableProps) 
                                     <Td>
                                         <KeyStatus apiKey={apiKey} />
                                     </Td>
-                                    <Td className="text-right">
+                                    <Td className="text-right whitespace-nowrap">
+                                        {!apiKey.revokedAt && (
+                                            <Tooltip
+                                                title={
+                                                    apiKey.canReveal
+                                                        ? 'Show key'
+                                                        : 'Made before keys could be shown again: create a new key to get one you can see'
+                                                }
+                                            >
+                                                <Button
+                                                    size="xs"
+                                                    variant="plain"
+                                                    icon={<ViewIcon />}
+                                                    disabled={!apiKey.canReveal}
+                                                    aria-label={`Show ${apiKey.name}`}
+                                                    onClick={() => onReveal(apiKey)}
+                                                />
+                                            </Tooltip>
+                                        )}
+                                        {!apiKey.revokedAt && (
+                                            <Tooltip title="Edit name and clients">
+                                                <Button
+                                                    size="xs"
+                                                    variant="plain"
+                                                    icon={<EditIcon />}
+                                                    aria-label={`Edit ${apiKey.name}`}
+                                                    onClick={() => onEdit(apiKey)}
+                                                />
+                                            </Tooltip>
+                                        )}
                                         {!apiKey.revokedAt && (
                                             <Tooltip title="Revoke key">
                                                 <Button

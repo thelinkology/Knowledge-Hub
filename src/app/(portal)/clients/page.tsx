@@ -6,7 +6,7 @@ import { requirePagePermission } from '@/server/actions/auth'
 export const metadata: Metadata = { title: 'Clients' }
 
 export default async function ClientsPage() {
-    await requirePagePermission('knowledge.read')
+    await requirePagePermission('clients.read')
     return (
         <ClientsSWRProvider>
             <ClientsClientPage />

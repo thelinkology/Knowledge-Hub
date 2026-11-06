@@ -10,6 +10,7 @@ import { isUuid } from '@/utils/ids'
 import { diagramToMarkdown } from '@/utils/diagram'
 import { getDiagramComponents } from '@/server/actions/diagramComponents'
 import { parseDiagram } from '@/@types/library/Diagram'
+import { inClientScope } from '@/utils/clientScope'
 import type {
     AgentArticle,
     AgentAsset,
@@ -22,14 +23,14 @@ import type {
 } from '@/@types/integrations/AgentApi'
 
 /*
- * What an agent (Copilot Studio) may read through /api/v1: PUBLISHED articles and library assets only, and
- * for a client-scoped key only that client's knowledge plus shared knowledge (client_id null). Anything
- * outside that is a 404, exactly like something that doesn't exist, so nothing can be probed.
+ * What an agent (Copilot Studio) may read through /api/v1: PUBLISHED articles and library assets only:
+ * shared knowledge (client_id null) plus the knowledge of the clients the key is assigned to (every client
+ * for an "all clients" key). Anything outside that is a 404, exactly like something that doesn't exist,
+ * so nothing can be probed.
  */
 
-/** Shared knowledge, or the key's own client (an unscoped key reads every client) */
-const inScope = (agent: AgentContext, clientId: string | null) =>
-    !agent.clientId || clientId === null || clientId === agent.clientId
+/** Shared knowledge, or one of the key's clients */
+const inScope = (agent: AgentContext, clientId: string | null) => inClientScope(agent.clientIds, clientId)
 
 const articleNotFound = () =>
     new NotFoundError('No published article has that id. Use SearchKnowledge to find articles.', 'ARTICLE_NOT_FOUND')
@@ -52,18 +53,18 @@ async function productRefs(): Promise<Map<string, AgentProductRef>> {
 }
 
 /**
- * The `client` filter (a slug or an id). A scoped key can only name its own client; any other value is
+ * The `client` filter (a slug or an id). A key can only name one of its own clients; any other value is
  * reported as unknown (the same answer as for a client that doesn't exist).
  */
 async function resolveClientFilter(agent: AgentContext, value: string | undefined): Promise<string | null> {
-    if (!value) return agent.clientId
+    if (!value) return null
     const query = supabaseAdmin().from('clients').select('id')
     const slug = value.toLowerCase()
     const row = unwrapMaybe(
         await (isUuid(value) ? query.eq('id', value) : query.eq('slug', slug)).maybeSingle(),
         'find the client',
     )
-    if (!row || (agent.clientId && row.id !== agent.clientId)) {
+    if (!row || !inScope(agent, row.id)) {
         throw new NotFoundError(
             `No client matches “${value}”. Call ListClients for the client slugs you can use, or leave client empty.`,
             'CLIENT_NOT_FOUND',
@@ -100,7 +101,7 @@ export async function agentSearch(
     const hits = (
         await searchKnowledge(
             { q: query.q, clientId: clientId ?? undefined, productId, type: query.type, limit: query.limit },
-            { includeDrafts: false, clientScope: agent.clientId },
+            { includeDrafts: false, scope: agent.clientIds },
         )
     ).filter((hit) => hit.status === 'published' && inScope(agent, hit.clientId))
     const [clients, products] = await Promise.all([clientRefs(hits.map((h) => h.clientId)), productRefs()])
@@ -217,13 +218,14 @@ export async function agentGetAsset(agent: AgentContext, assetId: string, origin
     }
 }
 
-/** The clients a key may filter by (a scoped key: only its own) */
+/** The clients a key may filter by (its own clients; every client for an "all clients" key) */
 export async function agentListClients(agent: AgentContext): Promise<{ clients: AgentClient[] }> {
+    if (agent.clientIds && !agent.clientIds.length) return { clients: [] }
     let query = supabaseAdmin()
         .from('clients')
         .select('id, slug, name, industry, summary, status')
         .order('name')
         .limit(1000)
-    if (agent.clientId) query = query.eq('id', agent.clientId)
+    if (agent.clientIds) query = query.in('id', agent.clientIds)
     return { clients: unwrap(await query, 'load the clients') }
 }

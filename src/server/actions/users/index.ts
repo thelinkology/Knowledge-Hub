@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/server/data/supabase/admin'
 import { check, unwrap, unwrapMaybe } from '@/server/data/supabase/errors'
 import { recordAudit } from '@/server/actions/audit'
 import { sendSignInLink } from '@/server/actions/auth'
+import { assertClientsExist } from '@/server/actions/clients'
 import { ConflictError, DataError, NotFoundError } from '@/@types/errors'
 import type { SessionUser } from '@/@types/auth/SessionUser'
 import type { Collection } from '@/@types/common'
@@ -11,6 +12,7 @@ import type {
     MyProfile,
     PersonOption,
     SetRoleInput,
+    SetUserClientsInput,
     UpdateProfileInput,
     UserAccount,
     UsersQuery,
@@ -20,7 +22,9 @@ import { USERS_PAGE_SIZE } from '@/constants/app.constant'
 export async function getUsers({ q, role, page }: UsersQuery): Promise<Collection<UserAccount>> {
     let query = supabaseAdmin()
         .from('profiles')
-        .select('id, email, display_name, role, created_at', { count: 'exact' })
+        .select('id, email, display_name, role, created_at, client_members(client:clients(id, name))', {
+            count: 'exact',
+        })
         .order('display_name')
         .range((page - 1) * USERS_PAGE_SIZE, page * USERS_PAGE_SIZE - 1)
     if (role) query = query.eq('role', role)
@@ -37,6 +41,10 @@ export async function getUsers({ q, role, page }: UsersQuery): Promise<Collectio
             email: row.email,
             displayName: row.display_name,
             role: row.role,
+            clients: (row.client_members as { client: { id: string; name: string } | null }[])
+                .map((m) => m.client)
+                .filter((c): c is { id: string; name: string } => !!c)
+                .sort((a, b) => a.name.localeCompare(b.name)),
             createdAt: new Date(row.created_at),
         })),
     }
@@ -82,6 +90,8 @@ export async function setUserRole(admin: SessionUser, userId: string, { role }: 
  */
 export async function inviteUser(admin: SessionUser, input: InviteUserInput, origin: string): Promise<UserAccount> {
     const db = supabaseAdmin()
+    // Checked first, so a bad client doesn't leave an account behind
+    const clientIds = await assertClientsExist(input.clientIds)
     const existing = unwrapMaybe(
         await db.from('profiles').select('id').ilike('email', input.email).maybeSingle(),
         'check the email',
@@ -133,16 +143,69 @@ export async function inviteUser(admin: SessionUser, input: InviteUserInput, ori
     if (input.role !== 'viewer') {
         check(await db.from('profiles').update({ role: input.role }).eq('id', data.user.id), 'set the role')
     }
+    if (clientIds.length) {
+        check(
+            await db
+                .from('client_members')
+                .insert(clientIds.map((clientId) => ({ client_id: clientId, user_id: data.user.id }))),
+            'assign the clients',
+        )
+    }
     await recordAudit(admin.id, input.method === 'password' ? 'user.created' : 'user.invited', 'user', data.user.id, {
         email: input.email,
         role: input.role,
+        clientIds,
     })
     return {
         id: data.user.id,
         email: input.email,
         displayName: input.displayName,
         role: input.role,
+        clients: [],
         createdAt: new Date(),
+    }
+}
+
+/**
+ * Sets the clients someone is assigned to (replacing the old list). A viewer reads shared knowledge plus
+ * these clients' knowledge; editors and administrators read every client anyway, so for them it's only a
+ * record of who works with whom.
+ */
+export async function setUserClients(admin: SessionUser, userId: string, input: SetUserClientsInput) {
+    const db = supabaseAdmin()
+    const profile = unwrapMaybe(
+        await db.from('profiles').select('id, display_name').eq('id', userId).maybeSingle(),
+        'find the user',
+    )
+    if (!profile) throw new NotFoundError('That user doesn’t exist.', 'USER_NOT_FOUND')
+    const clientIds = await assertClientsExist(input.clientIds)
+    const current = unwrap(
+        await db.from('client_members').select('client_id').eq('user_id', userId),
+        'load their clients',
+    ).map((row) => row.client_id)
+    const removed = current.filter((id) => !clientIds.includes(id))
+    const added = clientIds.filter((id) => !current.includes(id))
+    if (removed.length) {
+        check(
+            await db.from('client_members').delete().eq('user_id', userId).in('client_id', removed),
+            'update their clients',
+        )
+    }
+    if (added.length) {
+        check(
+            await db.from('client_members').upsert(
+                added.map((clientId) => ({ client_id: clientId, user_id: userId })),
+                { ignoreDuplicates: true },
+            ),
+            'update their clients',
+        )
+    }
+    if (removed.length || added.length) {
+        await recordAudit(admin.id, 'user.clients_changed', 'user', userId, {
+            name: profile.display_name,
+            added,
+            removed,
+        })
     }
 }
 

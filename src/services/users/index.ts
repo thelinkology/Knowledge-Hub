@@ -6,6 +6,7 @@ import type {
     InviteUserInput,
     MyProfile,
     SetRoleInput,
+    SetUserClientsInput,
     UpdateProfileInput,
     UserAccount,
     UsersQuery,
@@ -43,6 +44,9 @@ export const apiSetUserRole = (userId: string, input: SetRoleInput) =>
 
 export const apiInviteUser = (input: InviteUserInput) =>
     api.fetchJson<UserAccount>({ method: 'post', url: '/admin/users', data: input })
+
+export const apiSetUserClients = (userId: string, input: SetUserClientsInput) =>
+    api.fetchJson<void>({ method: 'put', url: `/admin/users/${userId}/clients`, data: input })
 
 export const apiSendUserSignInLink = (userId: string) =>
     api.fetchJson<{ email: string }>({ method: 'post', url: `/admin/users/${userId}/sign-in-link` })

@@ -29,11 +29,14 @@ export default function HomeLists({ overview, products }: HomeListsProps) {
     const canManageKnowledge = can('knowledge.manage')
     const canManageClients = can('clients.manage')
     const canManageRequirements = can('requirements.manage')
+    const seesClients = can('clients.read')
     const hasQuickActions = canManageKnowledge || canManageClients || canManageRequirements
+    // Viewers have no side column (no clients or delivery work): the articles take the full width
+    const hasAside = hasQuickActions || seesClients || canManageRequirements
 
     return (
-        <div className="grid gap-6 lg:grid-cols-3">
-            <div className="min-w-0 lg:col-span-2">
+        <div className={hasAside ? 'grid gap-6 lg:grid-cols-3' : ''}>
+            <div className={hasAside ? 'min-w-0 lg:col-span-2' : 'min-w-0'}>
                 <Card
                     header={{
                         content: (
@@ -68,83 +71,87 @@ export default function HomeLists({ overview, products }: HomeListsProps) {
                 </Card>
             </div>
 
-            <aside className="min-w-0 space-y-6" aria-label="Clients and delivery">
-                {hasQuickActions && (
-                    <Card header={{ content: <h2 className="text-base font-semibold">Quick actions</h2> }}>
-                        <ul className="space-y-2">
-                            {canManageKnowledge && (
-                                <QuickAction href={knowledgePath} icon={navigationIcon.article}>
-                                    New article
-                                </QuickAction>
-                            )}
-                            {canManageClients && (
-                                <QuickAction href={clientsPath} icon={navigationIcon.clients}>
-                                    New client
-                                </QuickAction>
-                            )}
-                            {canManageRequirements && (
-                                <QuickAction href={intakesPath} icon={navigationIcon.intake}>
-                                    New discovery intake
-                                </QuickAction>
-                            )}
-                        </ul>
-                    </Card>
-                )}
-
-                <Card
-                    header={{
-                        content: <h2 className="text-base font-semibold">Recently updated clients</h2>,
-                        extra: <SeeAll href={clientsPath} label="All clients" />,
-                    }}
-                >
-                    {overview.recentClients.length ? (
-                        <RecentClients clients={overview.recentClients} products={products} />
-                    ) : (
-                        <EmptyState
-                            compact
-                            icon={navigationIcon.clients}
-                            title="No clients yet"
-                            description={
-                                canManageClients
-                                    ? 'Add a client to link knowledge, intakes and BRDs to them.'
-                                    : 'Clients appear here once the delivery team adds them.'
-                            }
-                            action={
-                                canManageClients ? (
-                                    <LinkButton size="sm" href={clientsPath} icon={<AddIcon />}>
-                                        Add a client
-                                    </LinkButton>
-                                ) : undefined
-                            }
-                        />
+            {hasAside && (
+                <aside className="min-w-0 space-y-6" aria-label="Clients and delivery">
+                    {hasQuickActions && (
+                        <Card header={{ content: <h2 className="text-base font-semibold">Quick actions</h2> }}>
+                            <ul className="space-y-2">
+                                {canManageKnowledge && (
+                                    <QuickAction href={knowledgePath} icon={navigationIcon.article}>
+                                        New article
+                                    </QuickAction>
+                                )}
+                                {canManageClients && (
+                                    <QuickAction href={clientsPath} icon={navigationIcon.clients}>
+                                        New client
+                                    </QuickAction>
+                                )}
+                                {canManageRequirements && (
+                                    <QuickAction href={intakesPath} icon={navigationIcon.intake}>
+                                        New discovery intake
+                                    </QuickAction>
+                                )}
+                            </ul>
+                        </Card>
                     )}
-                </Card>
 
-                {canManageRequirements && (
-                    <Card
-                        header={{
-                            content: <h2 className="text-base font-semibold">Recent BRDs</h2>,
-                            extra: <SeeAll href={brdsPath} label="All BRDs" />,
-                        }}
-                    >
-                        {overview.recentBrds.length ? (
-                            <RecentBrds brds={overview.recentBrds} />
-                        ) : (
-                            <EmptyState
-                                compact
-                                icon={navigationIcon.brd}
-                                title="No BRDs yet"
-                                description="Complete a discovery intake with a client, then generate the customer BRD and the internal delivery brief from it."
-                                action={
-                                    <LinkButton size="sm" href={intakesPath}>
-                                        Go to discovery intakes
-                                    </LinkButton>
-                                }
-                            />
-                        )}
-                    </Card>
-                )}
-            </aside>
+                    {seesClients && (
+                        <Card
+                            header={{
+                                content: <h2 className="text-base font-semibold">Recently updated clients</h2>,
+                                extra: <SeeAll href={clientsPath} label="All clients" />,
+                            }}
+                        >
+                            {overview.recentClients.length ? (
+                                <RecentClients clients={overview.recentClients} products={products} />
+                            ) : (
+                                <EmptyState
+                                    compact
+                                    icon={navigationIcon.clients}
+                                    title="No clients yet"
+                                    description={
+                                        canManageClients
+                                            ? 'Add a client to link knowledge, intakes and BRDs to them.'
+                                            : 'Clients appear here once the delivery team adds them.'
+                                    }
+                                    action={
+                                        canManageClients ? (
+                                            <LinkButton size="sm" href={clientsPath} icon={<AddIcon />}>
+                                                Add a client
+                                            </LinkButton>
+                                        ) : undefined
+                                    }
+                                />
+                            )}
+                        </Card>
+                    )}
+
+                    {canManageRequirements && (
+                        <Card
+                            header={{
+                                content: <h2 className="text-base font-semibold">Recent BRDs</h2>,
+                                extra: <SeeAll href={brdsPath} label="All BRDs" />,
+                            }}
+                        >
+                            {overview.recentBrds.length ? (
+                                <RecentBrds brds={overview.recentBrds} />
+                            ) : (
+                                <EmptyState
+                                    compact
+                                    icon={navigationIcon.brd}
+                                    title="No BRDs yet"
+                                    description="Complete a discovery intake with a client, then generate the customer BRD and the internal delivery brief from it."
+                                    action={
+                                        <LinkButton size="sm" href={intakesPath}>
+                                            Go to discovery intakes
+                                        </LinkButton>
+                                    }
+                                />
+                            )}
+                        </Card>
+                    )}
+                </aside>
+            )}
         </div>
     )
 }

@@ -1,5 +1,5 @@
 import api from '@/services/api'
-import type { EmailOnlyInput, ResetPasswordInput, SignInInput } from '@/@types/auth/AuthSchema'
+import type { EmailOnlyInput, ResetPasswordInput, SignInInput, SignInLinkInput } from '@/@types/auth/AuthSchema'
 
 /* Small services that don't warrant their own folder: auth. */
 
@@ -9,7 +9,7 @@ export const apiSignIn = (input: SignInInput) =>
 export const apiResendConfirmation = (input: EmailOnlyInput) =>
     api.fetchJson<void>({ method: 'post', url: '/auth/resend', data: input })
 
-export const apiSendSignInLink = (input: EmailOnlyInput) =>
+export const apiSendSignInLink = (input: SignInLinkInput) =>
     api.fetchJson<void>({ method: 'post', url: '/auth/magic-link', data: input })
 
 export const apiForgotPassword = (input: EmailOnlyInput) =>

@@ -23,6 +23,10 @@ export type SignInInput = z.infer<typeof SignInSchema>
 export const EmailOnlySchema = z.object({ email: EmailSchema })
 export type EmailOnlyInput = z.infer<typeof EmailOnlySchema>
 
+/** POST /api/auth/magic-link: `returnTo` = where to land after following the link (a same-site path) */
+export const SignInLinkSchema = EmailOnlySchema.extend({ returnTo: z.string().max(500).optional() })
+export type SignInLinkInput = z.infer<typeof SignInLinkSchema>
+
 export const ResetPasswordSchema = z
     .object({ password: NewPasswordSchema, confirm: z.string() })
     .refine((p) => p.password === p.confirm, { message: v.passwordsMatch, path: ['confirm'] })

@@ -34,12 +34,20 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
         .maybeSingle()
     if (!profile) return null
 
+    // Viewers read shared knowledge plus their own clients' (client_members); other roles read every client
+    let clientIds: string[] | null = null
+    if (!hasPermission(profile.role, 'clients.read')) {
+        const { data: memberships } = await supabase.from('client_members').select('client_id').eq('user_id', userId)
+        clientIds = (memberships ?? []).map((m) => m.client_id)
+    }
+
     return {
         id: profile.id,
         email: profile.email,
         name: profile.display_name,
         role: profile.role,
         permissions: [...rolePermissions[profile.role]],
+        clientIds,
     }
 })
 

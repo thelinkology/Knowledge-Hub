@@ -116,7 +116,9 @@ function CollectionView({ collectionId, detail }: { collectionId: string; detail
                         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
                             <ProductTag productId={collection.productId} products={products} />
                             {collection.status !== 'published' && <PublishStatusTag status={collection.status} />}
-                            {collection.clientId ? (
+                            {collection.clientId && !can('clients.read') ? (
+                                <span className="text-gray-500">Client: {collection.clientName}</span>
+                            ) : collection.clientId ? (
                                 <Link
                                     href={getClientPath(collection.clientId)}
                                     className="text-gray-500 hover:text-primary hover:underline"

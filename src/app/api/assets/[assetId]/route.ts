@@ -6,7 +6,7 @@ import { SaveAssetSchema } from '@/@types/library/Asset'
 type Params = { assetId: string }
 
 /** One asset (viewers: published only) */
-export const GET = apiAuthHandler<Params>('knowledge.read', async (_req, ctx, user) =>
+export const GET = apiAuthHandler<Params>('library.read', async (_req, ctx, user) =>
     getJsonResponse(await getAsset(user, readId((await ctx.params).assetId, 'asset'))),
 )
 

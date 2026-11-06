@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { PUBLIC_PATHS, RETURN_TO_URL_KEY } from '@/constants/auth.constant'
+import { safeReturnPath } from '@/utils/returnTo'
 
 /*
  * Runs before every page/API request:
@@ -53,10 +54,11 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(loginUrl)
     }
     if (signedIn && (pathname === '/login' || pathname === '/welcome')) {
-        const target = request.nextUrl.clone()
-        target.pathname = '/'
-        target.search = ''
-        return NextResponse.redirect(target)
+        // Already signed in (e.g. opening an agent's link in a new tab): straight to where they were going
+        const target = new URL(safeReturnPath(request.nextUrl.searchParams.get(RETURN_TO_URL_KEY), '/'), request.url)
+        const redirect = NextResponse.redirect(target)
+        response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie))
+        return redirect
     }
 
     return response

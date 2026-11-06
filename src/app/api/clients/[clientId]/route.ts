@@ -5,7 +5,7 @@ import { ClientSchema } from '@/@types/clients/Client'
 
 type Params = { clientId: string }
 
-export const GET = apiAuthHandler<Params>('knowledge.read', async (_req, ctx, user) =>
+export const GET = apiAuthHandler<Params>('clients.read', async (_req, ctx, user) =>
     getJsonResponse(await getClient(readId((await ctx.params).clientId, 'client'), user)),
 )
 

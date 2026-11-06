@@ -7,7 +7,7 @@ import { requirePagePermission } from '@/server/actions/auth'
 export const metadata: Metadata = { title: 'Library' }
 
 export default async function LibraryPage() {
-    await requirePagePermission('knowledge.read')
+    await requirePagePermission('library.read')
     return (
         <ProductsSWRProvider>
             <ClientOptionsSWRProvider>

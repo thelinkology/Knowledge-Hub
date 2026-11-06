@@ -9,6 +9,7 @@ import { Form, FormItem } from '@/components/ui/Form'
 import { toastError, toastSuccess } from '@/components/ui/toast/toast'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import PasswordInput from '@/components/auth/PasswordInput'
+import ClientsPicker from '@/components/shared/ClientsPicker'
 import { apiInviteUser } from '@/services/users'
 import { useUsersStore } from '@/stores/AdminStores'
 import { ROLES, roleLabel } from '@/@types/auth/Roles'
@@ -30,7 +31,7 @@ export default function InviteUserDialog({ onClose }: { onClose: () => void }) {
     const refresh = useUsersStore((s) => s.refresh)
     const form = useForm<InviteUserInput>({
         resolver: zodResolver(InviteUserSchema),
-        defaultValues: { email: '', displayName: '', role: 'viewer', method: 'email', password: '' },
+        defaultValues: { email: '', displayName: '', role: 'viewer', method: 'email', password: '', clientIds: [] },
     })
     const {
         control,
@@ -39,6 +40,7 @@ export default function InviteUserDialog({ onClose }: { onClose: () => void }) {
         formState: { errors, isSubmitting },
     } = form
     const method = useWatch({ control, name: 'method' })
+    const role = useWatch({ control, name: 'role' })
     const byPassword = method === 'password'
 
     const onValid = async (input: InviteUserInput) => {
@@ -124,6 +126,29 @@ export default function InviteUserDialog({ onClose }: { onClose: () => void }) {
                             )}
                         />
                     </FormItem>
+                    {role === 'viewer' && (
+                        <FormItem
+                            label="Clients"
+                            htmlFor="invite-clients"
+                            extra={<span className="text-xs text-gray-500">Optional</span>}
+                        >
+                            <Controller
+                                name="clientIds"
+                                control={control}
+                                render={({ field }) => (
+                                    <ClientsPicker
+                                        inputId="invite-clients"
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Shared knowledge only"
+                                    />
+                                )}
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                                Viewers read shared knowledge plus these clients’ knowledge.
+                            </p>
+                        </FormItem>
+                    )}
                     <FormItem label="How they get in">
                         <Controller
                             name="method"

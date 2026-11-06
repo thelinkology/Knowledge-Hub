@@ -6,48 +6,74 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
     public: {
         Tables: {
+            api_key_clients: {
+                Row: {
+                    api_key_id: string
+                    client_id: string
+                }
+                Insert: {
+                    api_key_id: string
+                    client_id: string
+                }
+                Update: {
+                    api_key_id?: string
+                    client_id?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: 'api_key_clients_api_key_id_fkey'
+                        columns: ['api_key_id']
+                        isOneToOne: false
+                        referencedRelation: 'api_keys'
+                        referencedColumns: ['id']
+                    },
+                    {
+                        foreignKeyName: 'api_key_clients_client_id_fkey'
+                        columns: ['client_id']
+                        isOneToOne: false
+                        referencedRelation: 'clients'
+                        referencedColumns: ['id']
+                    },
+                ]
+            }
             api_keys: {
                 Row: {
                     id: string
                     name: string
                     prefix: string
                     key_hash: string
-                    client_id: string | null
                     created_by: string | null
                     created_at: string
                     last_used_at: string | null
                     revoked_at: string | null
+                    all_clients: boolean
+                    secret_ciphertext: string | null
                 }
                 Insert: {
                     id?: string
                     name: string
                     prefix: string
                     key_hash: string
-                    client_id?: string | null
                     created_by?: string | null
                     created_at?: string
                     last_used_at?: string | null
                     revoked_at?: string | null
+                    all_clients?: boolean
+                    secret_ciphertext?: string | null
                 }
                 Update: {
                     id?: string
                     name?: string
                     prefix?: string
                     key_hash?: string
-                    client_id?: string | null
                     created_by?: string | null
                     created_at?: string
                     last_used_at?: string | null
                     revoked_at?: string | null
+                    all_clients?: boolean
+                    secret_ciphertext?: string | null
                 }
                 Relationships: [
-                    {
-                        foreignKeyName: 'api_keys_client_id_fkey'
-                        columns: ['client_id']
-                        isOneToOne: false
-                        referencedRelation: 'clients'
-                        referencedColumns: ['id']
-                    },
                     {
                         foreignKeyName: 'api_keys_created_by_fkey'
                         columns: ['created_by']
@@ -323,6 +349,39 @@ export type Database = {
                     {
                         foreignKeyName: 'brds_updated_by_fkey'
                         columns: ['updated_by']
+                        isOneToOne: false
+                        referencedRelation: 'profiles'
+                        referencedColumns: ['id']
+                    },
+                ]
+            }
+            client_members: {
+                Row: {
+                    client_id: string
+                    user_id: string
+                    created_at: string
+                }
+                Insert: {
+                    client_id: string
+                    user_id: string
+                    created_at?: string
+                }
+                Update: {
+                    client_id?: string
+                    user_id?: string
+                    created_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: 'client_members_client_id_fkey'
+                        columns: ['client_id']
+                        isOneToOne: false
+                        referencedRelation: 'clients'
+                        referencedColumns: ['id']
+                    },
+                    {
+                        foreignKeyName: 'client_members_user_id_fkey'
+                        columns: ['user_id']
                         isOneToOne: false
                         referencedRelation: 'profiles'
                         referencedColumns: ['id']
@@ -912,6 +971,10 @@ export type Database = {
         }
         Views: { [_ in never]: never }
         Functions: {
+            can_read_client: {
+                Args: { p_client_id: string }
+                Returns: boolean
+            }
             hit_rate_limit: {
                 Args: { p_key: string; p_window_seconds: number; p_max: number }
                 Returns: Json
@@ -931,7 +994,7 @@ export type Database = {
             search_knowledge: {
                 Args: {
                     p_query: string
-                    p_client_id?: string
+                    p_client_ids?: string[]
                     p_product_id?: string
                     p_types?: string[]
                     p_include_drafts?: boolean

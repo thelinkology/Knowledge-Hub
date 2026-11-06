@@ -15,7 +15,7 @@ interface ClientPageProps {
 
 /** One client; `?tab=` (overview | knowledge | library | intakes | brds) selects the tab */
 export default async function ClientPage({ params }: ClientPageProps) {
-    const user = await requirePagePermission('knowledge.read')
+    const user = await requirePagePermission('clients.read')
     const { clientId } = await params
     if (!isUuid(clientId)) notFound()
 

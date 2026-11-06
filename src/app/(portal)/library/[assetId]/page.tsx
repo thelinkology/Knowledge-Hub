@@ -15,7 +15,7 @@ interface AssetPageProps {
 }
 
 export default async function AssetPage({ params }: AssetPageProps) {
-    const user = await requirePagePermission('knowledge.read')
+    const user = await requirePagePermission('library.read')
     const { assetId } = await params
     if (!isUuid(assetId)) notFound()
 

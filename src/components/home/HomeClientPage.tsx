@@ -44,7 +44,10 @@ export default function HomeClientPage() {
                     <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">{portalName}</div>
                     <h1 className="text-2xl md:text-4xl">{firstName ? `Welcome back, ${firstName}` : 'Welcome'}</h1>
                     <p className="mt-2 text-gray-600 dark:text-gray-300">
-                        {portalTagline} Search articles, best practices and reusable assets from past delivery work.
+                        {portalTagline}{' '}
+                        {can('library.read')
+                            ? 'Search articles, best practices and reusable assets from past delivery work.'
+                            : 'Search articles, how-tos and best practices from past delivery work.'}
                     </p>
                     <KnowledgeSearchBox onSearch={search} className="mt-6 text-left" />
                 </div>
@@ -66,20 +69,24 @@ export default function HomeClientPage() {
                                 icon={navigationIcon.article}
                             />
                         </StatLink>
-                        <StatLink href={libraryPath}>
-                            <StatTile
-                                label="Library assets"
-                                value={data.counts.assets.toLocaleString()}
-                                icon={navigationIcon.library}
-                            />
-                        </StatLink>
-                        <StatLink href={clientsPath}>
-                            <StatTile
-                                label="Clients"
-                                value={data.counts.clients.toLocaleString()}
-                                icon={navigationIcon.clients}
-                            />
-                        </StatLink>
+                        {can('library.read') && (
+                            <StatLink href={libraryPath}>
+                                <StatTile
+                                    label="Library assets"
+                                    value={data.counts.assets.toLocaleString()}
+                                    icon={navigationIcon.library}
+                                />
+                            </StatLink>
+                        )}
+                        {can('clients.read') && (
+                            <StatLink href={clientsPath}>
+                                <StatTile
+                                    label="Clients"
+                                    value={data.counts.clients.toLocaleString()}
+                                    icon={navigationIcon.clients}
+                                />
+                            </StatLink>
+                        )}
                         {can('knowledge.manage') && (
                             <StatLink href={knowledgePath}>
                                 <StatTile

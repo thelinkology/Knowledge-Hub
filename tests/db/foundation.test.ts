@@ -214,12 +214,12 @@ describe('search_knowledge', () => {
     const search = async (
         query: string,
         {
-            clientId = null,
+            clientIds = null,
             includeDrafts = false,
             types = ['article', 'asset'],
             product = null,
         }: {
-            clientId?: string | null
+            clientIds?: string[] | null
             includeDrafts?: boolean
             types?: string[]
             product?: string | null
@@ -228,7 +228,7 @@ describe('search_knowledge', () => {
         (
             await db.query<Hit>(`select * from public.search_knowledge($1, $2, $3, $4, $5, 50)`, [
                 query,
-                clientId,
+                clientIds,
                 product,
                 types,
                 includeDrafts,
@@ -283,9 +283,16 @@ describe('search_knowledge', () => {
     })
 
     it('limits a client to its own and shared knowledge', async () => {
-        const hits = ids(await search('gateway', { clientId: contoso }))
+        const hits = ids(await search('gateway', { clientIds: [contoso] }))
         expect(hits).toEqual([created.shared, created.contoso, created.asset].sort())
         expect(hits).not.toContain(created.fabrikam)
+    })
+
+    it('reads several clients, or shared knowledge only for an empty list', async () => {
+        expect(ids(await search('gateway', { clientIds: [contoso, fabrikam] }))).toEqual(
+            [created.shared, created.contoso, created.fabrikam, created.asset].sort(),
+        )
+        expect(ids(await search('gateway', { clientIds: [] }))).toEqual([created.shared, created.asset].sort())
     })
 
     it('filters by type and product', async () => {
