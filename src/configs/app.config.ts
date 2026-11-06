@@ -6,7 +6,6 @@ export const portalTagline = 'Find it. Reuse it. Deliver it.'
 
 // ── Public ──
 export const signInPath = '/login'
-export const signUpPath = '/signup'
 export const forgotPasswordPath = '/forgot-password'
 export const resetPasswordPath = '/reset-password'
 export const privacyPath = '/privacy'

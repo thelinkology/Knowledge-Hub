@@ -111,7 +111,7 @@ export default function UsersClientPage() {
                 description="Viewers read published knowledge. Editors write knowledge, manage clients and create intakes and BRDs. Administrators also manage settings, agent keys and people. Changes are recorded in the audit log."
                 actions={
                     <Button variant="solid" size="sm" icon={<AddUserIcon />} onClick={() => setInviting(true)}>
-                        Invite someone
+                        Add someone
                     </Button>
                 }
             />

@@ -19,6 +19,9 @@
 /* Motion — every animation honours prefers-reduced-motion */
 @import './others/_animations.css';
 
+/* The public welcome page */
+@import './others/_welcome.css';
+
 /* Third-party */
 @import 'simplebar-react/dist/simplebar.min.css';
 @import '@xyflow/react/dist/style.css';

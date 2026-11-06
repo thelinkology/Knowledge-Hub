@@ -23,7 +23,7 @@ components, deployed on Vercel. Conventions for contributors (human or AI) are i
 
 | Role | Can |
 |---|---|
-| Viewer (default for sign-ups) | Read published knowledge, the library and client pages |
+| Viewer (default for new accounts) | Read published knowledge, the library and client pages |
 | Editor | Write and publish knowledge and library assets, manage clients, run intakes and BRDs |
 | Administrator | Everything, plus users & roles, products, intake questions and rules, Copilot API keys, audit log |
 
@@ -34,16 +34,19 @@ components, deployed on Vercel. Conventions for contributors (human or AI) are i
 3. **Apply the migrations** in `supabase/migrations` in order — either paste each file into the Supabase SQL editor,
    or with the Supabase CLI: `supabase link --project-ref <ref>` then `supabase db push`.
 4. **Environment**: copy `.env.example` to `.env.local` and fill in `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and
-   `SUPABASE_SECRET_KEY` (Supabase → Project Settings → API). Optionally set `SIGNUP_EMAIL_DOMAINS` to your company
-   domain(s) so only those addresses can self-register, e.g. `fpautomation.co, gmail.com` (commas, semicolons or
-   spaces). On Vercel, redeploy after changing an environment variable.
+   `SUPABASE_SECRET_KEY` (Supabase → Project Settings → API). On Vercel, redeploy after changing an environment
+   variable.
 5. **Auth settings** (Supabase → Authentication → URL configuration): Site URL `http://localhost:3000` (later your
    Vercel URL) and add `<site>/auth/confirm` to the redirect URLs. Optional: paste the templates from
    `supabase/templates` into Authentication → Email templates (they link through `/auth/confirm` and work on any device).
    **Email:** Supabase's built-in email service only sends to members of your Supabase project (and a few emails an
-   hour), so sign-up confirmations and invitations to anyone else fail until you set up custom SMTP (Authentication →
+   hour), so invitations and sign-in links to anyone else fail until you set up custom SMTP (Authentication →
    Emails → SMTP settings, e.g. Microsoft 365, Resend or SendGrid).
-6. `npm run dev` → <http://localhost:3000>, sign up, then make yourself an administrator in the SQL editor:
+6. **Access is by invitation only** (there is no sign-up page). Turn off **Allow new users to sign up** in Supabase →
+   Authentication → Sign In / Providers, so accounts can't be made around the app. Create the first account in
+   Supabase → Authentication → Users → **Add user → Create new user** (tick *Auto Confirm User*), then make it an
+   administrator in the SQL editor. After that, administrators add people in the app (Administration → Users →
+   **Add someone**: an emailed invitation, or a password you set and share):
 
    ```sql
    update public.profiles set role = 'admin' where email = 'you@company.com';

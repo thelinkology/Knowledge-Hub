@@ -5,8 +5,10 @@ import { PUBLIC_PATHS, RETURN_TO_URL_KEY } from '@/constants/auth.constant'
 /*
  * Runs before every page/API request:
  *  1. Refreshes the Supabase session cookie (access tokens are short-lived).
- *  2. Optimistically sends signed-out visitors of portal pages to /login. This is a convenience only —
- *     the portal layout and every API route verify the user again on the server.
+ *  2. Shows signed-out visitors of "/" the public welcome page (a rewrite: the address stays "/").
+ *  3. Optimistically sends signed-out visitors of other portal pages to /login. This is a convenience
+ *     only — the portal layout and every API route verify the user again on the server.
+ * There is no self sign-up: administrators create accounts.
  */
 export async function proxy(request: NextRequest) {
     let response = NextResponse.next({ request })
@@ -37,13 +39,20 @@ export async function proxy(request: NextRequest) {
     const isPublic = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
     const isApi = pathname.startsWith('/api/')
 
+    if (!signedIn && pathname === '/') {
+        const welcome = request.nextUrl.clone()
+        welcome.pathname = '/welcome'
+        const rewrite = NextResponse.rewrite(welcome, { request })
+        response.cookies.getAll().forEach((cookie) => rewrite.cookies.set(cookie))
+        return rewrite
+    }
     if (!signedIn && !isPublic && !isApi) {
         const loginUrl = request.nextUrl.clone()
         loginUrl.pathname = '/login'
         loginUrl.search = pathname === '/' ? '' : `?${RETURN_TO_URL_KEY}=${encodeURIComponent(pathname + search)}`
         return NextResponse.redirect(loginUrl)
     }
-    if (signedIn && (pathname === '/login' || pathname === '/signup')) {
+    if (signedIn && (pathname === '/login' || pathname === '/welcome')) {
         const target = request.nextUrl.clone()
         target.pathname = '/'
         target.search = ''

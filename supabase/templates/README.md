@@ -14,7 +14,7 @@ work on **any device**. (Supabase's default links only work in the browser that 
 
 | Template | File | Subject |
 |---|---|---|
-| Confirm sign up | `confirmation.html` | Confirm your Knowledge Hub account |
+| Confirm sign up (unused: no self sign-up) | `confirmation.html` | Confirm your Knowledge Hub account |
 | Invite user | `invite.html` | You’re invited to Knowledge Hub |
 | Magic link or OTP | `magic_link.html` | Your Knowledge Hub sign-in link |
 | Change email address | `email_change.html` | Confirm your new email for Knowledge Hub |

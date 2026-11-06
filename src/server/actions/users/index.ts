@@ -75,8 +75,10 @@ export async function setUserRole(admin: SessionUser, userId: string, { role }: 
 }
 
 /**
- * Invites someone by email: Supabase sends them a link to set a password. The profile is created by
- * handle_new_user (as a viewer); the role chosen here is then applied by the server.
+ * Creates an account (the only way in: there is no self sign-up). Either Supabase emails an invitation
+ * with a link to set a password, or — no email needed — the account is created confirmed with the
+ * password the administrator chose, to share with the person. The profile is created by handle_new_user
+ * (as a viewer); the role chosen here is then applied by the server.
  */
 export async function inviteUser(admin: SessionUser, input: InviteUserInput, origin: string): Promise<UserAccount> {
     const db = supabaseAdmin()
@@ -86,10 +88,18 @@ export async function inviteUser(admin: SessionUser, input: InviteUserInput, ori
     )
     if (existing) throw new ConflictError('Someone with that email already has an account.', 'ACCOUNT_EXISTS')
 
-    const { data, error } = await db.auth.admin.inviteUserByEmail(input.email, {
-        data: { display_name: input.displayName },
-        redirectTo: `${origin}/auth/confirm?next=${encodeURIComponent('/reset-password')}`,
-    })
+    const { data, error } =
+        input.method === 'password'
+            ? await db.auth.admin.createUser({
+                  email: input.email,
+                  password: input.password,
+                  email_confirm: true,
+                  user_metadata: { display_name: input.displayName },
+              })
+            : await db.auth.admin.inviteUserByEmail(input.email, {
+                  data: { display_name: input.displayName },
+                  redirectTo: `${origin}/auth/confirm?next=${encodeURIComponent('/reset-password')}`,
+              })
     if (error || !data.user) {
         console.error('[users] invite', error?.code ?? error?.message)
         if (error?.code === 'email_exists')
@@ -102,15 +112,31 @@ export async function inviteUser(admin: SessionUser, input: InviteUserInput, ori
             )
         if (error?.status === 429 || error?.code?.startsWith('over_'))
             throw new DataError(
-                'The email limit was reached (Supabase’s built-in email service sends only a few emails an hour). Try again later, or set up custom SMTP in Supabase.',
+                'Supabase’s email limit was reached: too many emails in the last hour. Wait and try again, or raise the limit in Supabase → Authentication → Rate limits (with custom SMTP; the built-in service allows only a few an hour).',
                 'INVITE_FAILED',
             )
-        throw new DataError('Couldn’t send the invitation. Check the address and try again.', 'INVITE_FAILED')
+        if (error?.code === 'weak_password')
+            throw new DataError('That password is too easy to guess. Choose a longer one.', 'WEAK_PASSWORD')
+        // The SMTP server refused or didn't answer (wrong settings, or SMTP sign-in blocked in Microsoft 365)
+        if (input.method === 'email' && (error?.status === 504 || /email/i.test(error?.message ?? '')))
+            throw new DataError(
+                'Supabase couldn’t send the email through your mail server. Supabase → Logs → Auth shows why (often SMTP sign-in is blocked in Microsoft 365). Meanwhile, you can create the account with a password instead.',
+                'INVITE_FAILED',
+            )
+        throw new DataError(
+            input.method === 'password'
+                ? 'Couldn’t create the account. Check the details and try again.'
+                : 'Couldn’t send the invitation. Check the address and try again.',
+            'INVITE_FAILED',
+        )
     }
     if (input.role !== 'viewer') {
         check(await db.from('profiles').update({ role: input.role }).eq('id', data.user.id), 'set the role')
     }
-    await recordAudit(admin.id, 'user.invited', 'user', data.user.id, { email: input.email, role: input.role })
+    await recordAudit(admin.id, input.method === 'password' ? 'user.created' : 'user.invited', 'user', data.user.id, {
+        email: input.email,
+        role: input.role,
+    })
     return {
         id: data.user.id,
         email: input.email,

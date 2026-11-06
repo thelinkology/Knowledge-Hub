@@ -11,7 +11,7 @@ import { Form, FormItem } from '@/components/ui/Form'
 import PasswordInput from './PasswordInput'
 import CheckEmailPanel from './CheckEmailPanel'
 import { EmailIcon, SignInIcon } from '@/configs/icons.config'
-import { forgotPasswordPath, homePath, signUpPath } from '@/configs/app.config'
+import { forgotPasswordPath, homePath } from '@/configs/app.config'
 import { authMessages } from '@/configs/authMessages.config'
 import { apiSendSignInLink, apiSignIn } from '@/services/misc'
 import { EmailSchema, SignInSchema, type SignInInput } from '@/@types/auth/AuthSchema'
@@ -190,12 +190,7 @@ export default function SignInCard({ returnTo, notice }: SignInCardProps) {
             <p id="magic-link-hint" className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
                 {m.magicLinkHint}
             </p>
-            <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                {m.noAccount}{' '}
-                <Link href={signUpPath} className="font-semibold text-primary hover:underline">
-                    {m.createAccount}
-                </Link>
-            </p>
+            <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">{m.noAccount}</p>
         </>
     )
 }

@@ -19,13 +19,6 @@ export const SignInSchema = z.object({
 })
 export type SignInInput = z.infer<typeof SignInSchema>
 
-export const SignUpSchema = z.object({
-    displayName: DisplayNameSchema,
-    email: EmailSchema,
-    password: NewPasswordSchema,
-})
-export type SignUpInput = z.infer<typeof SignUpSchema>
-
 /** Also used to resend the confirmation email */
 export const EmailOnlySchema = z.object({ email: EmailSchema })
 export type EmailOnlyInput = z.infer<typeof EmailOnlySchema>

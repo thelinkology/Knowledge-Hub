@@ -14,8 +14,7 @@ import {
 import { hasPermission, rolePermissions, type Permission } from '@/@types/auth/Roles'
 import type { SessionUser } from '@/@types/auth/SessionUser'
 import { authMessages, type AuthErrorCode } from '@/configs/authMessages.config'
-import type { EmailOnlyInput, ResetPasswordInput, SignInInput, SignUpInput } from '@/@types/auth/AuthSchema'
-import { isAllowedSignUpEmail } from '@/utils/emailDomains'
+import type { EmailOnlyInput, ResetPasswordInput, SignInInput } from '@/@types/auth/AuthSchema'
 
 /**
  * The signed-in user, or null. Verifies the session token (getClaims checks the JWT signature) and
@@ -73,6 +72,9 @@ const authErrorFor = (error: { name?: string; message: string; status?: number; 
     if (error.name === 'AuthRetryableFetchError' || error.status === 0) {
         return new ServiceUnavailableError(authMessages.errors.AUTH_UNAVAILABLE, 'AUTH_UNAVAILABLE')
     }
+    if (error.code === 'over_email_send_rate_limit') {
+        return new TooManyRequestsError(authMessages.errors.EMAIL_RATE_LIMITED)
+    }
     if (error.status === 429 || error.code?.startsWith('over_')) {
         return new TooManyRequestsError(authMessages.errors.RATE_LIMITED)
     }
@@ -111,28 +113,6 @@ export async function signIn({ login, password }: SignInInput) {
 
 /** Where email links land; `next` is where to go after the link is verified */
 const confirmUrl = (origin: string, next: string) => `${origin}/auth/confirm?next=${encodeURIComponent(next)}`
-
-/**
- * Creates a VIEWER account (roles are granted by an administrator). When SIGNUP_EMAIL_DOMAINS is set, only
- * those company domains may sign up. When email confirmation is on, no session is returned and the person is
- * asked to check their inbox.
- */
-export async function signUp({ displayName, email, password }: SignUpInput, origin: string) {
-    if (!isAllowedSignUpEmail(email, process.env.SIGNUP_EMAIL_DOMAINS)) throw authError('DOMAIN_NOT_ALLOWED')
-    const supabase = await createUserClient()
-    const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-            data: { display_name: displayName },
-            emailRedirectTo: confirmUrl(origin, '/?welcome=1'),
-        },
-    })
-    if (error) throw authErrorFor(error)
-    // Supabase hides "already registered" when confirmation is on: it returns a user with no identities
-    if (data.user && data.user.identities?.length === 0) throw authError('ACCOUNT_EXISTS')
-    return { needsConfirmation: !data.session }
-}
 
 /** Sends the sign-up confirmation email again. Always "succeeds" so it can't reveal who has an account. */
 export async function resendConfirmation({ email }: EmailOnlyInput, origin: string) {

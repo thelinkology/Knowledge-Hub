@@ -86,7 +86,7 @@ Page, component, API route, server action, store, SQL migration, agent endpoint,
 | Tests | Vitest: pure logic (`src/utils/*.test.ts`) + SQL in PGlite (`tests/db/*.test.ts`) |
 | Lint / format | ESLint flat config (next core-web-vitals + typescript + prettier); Prettier: single quotes, no semicolons, 4 spaces, width 120 |
 
-Roles: `viewer`, `editor`, `admin` (`profiles.role`, set only by admins; sign-ups are viewers). Permissions in
+Roles: `viewer`, `editor`, `admin` (`profiles.role`, set only by admins; new accounts are viewers; accounts are created only by admins — no self sign-up). Permissions in
 `@types/auth/Roles.ts`: `knowledge.read`, `knowledge.manage`, `clients.manage`, `requirements.manage`,
 `settings.manage`, `users.manage`, `audit.view`. API routes use `apiAuthHandler(permission, …)`; pages use
 `requirePagePermission(permission)`; the UI hides actions with `useSession().can(permission)` (presentation only).
@@ -109,7 +109,7 @@ Roles: `viewer`, `editor`, `admin` (`profiles.role`, set only by admins; sign-up
 6. **Agents (Copilot Studio) only read published content** through `/api/v1/*` with an API key
    (`Authorization: Bearer kh_…` or `x-api-key`). Only the key's SHA-256 is stored; keys can be scoped to a client
    and revoked; every request is rate-limited per key. Agent responses contain Markdown, never raw HTML.
-7. **Roles never come from user input** (sign-up metadata is ignored by `handle_new_user`).
+7. **Roles never come from user input** (account metadata is ignored by `handle_new_user`).
 8. **Audit** consequential changes with `recordAudit()` (roles, invites, publishing, deletions, BRD generation, keys).
 9. **Uploads** never pass through our functions (Vercel's 4.5 MB body limit): the server issues a one-time signed
    upload URL for a path it chooses, then reads the stored bytes back and checks them (`checkImageUpload`)
@@ -130,7 +130,7 @@ src/
 ├── @types/            → Types, zod schemas, *Options maps, one folder per entity; supabase/database.types.ts (generated)
 ├── app/
 │   ├── layout.tsx     → html/body, fonts, theme cookie, ThemeProvider, SWRAppConfig
-│   ├── (auth)/        → login, signup, password reset (public)
+│   ├── (auth)/        → login, password reset (public); welcome/ → public home page for signed-out visitors
 │   ├── (portal)/      → app shell (PostLoginLayout); page.tsx files are server components
 │   ├── api/<route>/route.ts → validate (zod) → server action → response
 │   ├── api/v1/        → the agent API (API-key auth, published content only)

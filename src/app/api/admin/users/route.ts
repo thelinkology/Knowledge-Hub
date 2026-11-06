@@ -8,7 +8,7 @@ export const GET = apiAuthHandler('users.manage', async (req) =>
     getJsonResponse(await getUsers(UsersQuerySchema.parse(readQuery(req)))),
 )
 
-/** Invites someone by email (Supabase sends them a link to set a password) */
+/** Creates an account: an emailed invitation, or a password the administrator sets */
 export const POST = apiAuthHandler('users.manage', async (req, _ctx, user) => {
     const input = InviteUserSchema.parse(await readJsonBody(req))
     await enforceRateLimit('invitePerUser', user.id)

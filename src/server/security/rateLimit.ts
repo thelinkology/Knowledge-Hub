@@ -20,7 +20,6 @@ export interface Limit {
 export const LIMITS = {
     signInPerIp: { max: 20, windowSeconds: 300 },
     signInPerEmail: { max: 8, windowSeconds: 300 },
-    signUpPerIp: { max: 6, windowSeconds: 3600 },
     emailPerIp: { max: 6, windowSeconds: 900 },
     emailPerAddress: { max: 3, windowSeconds: 900 },
     resetPerIp: { max: 10, windowSeconds: 900 },

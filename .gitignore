@@ -6,7 +6,7 @@ node_modules
 out
 .vercel
 next-env.d.ts
-tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # env — real secrets never get committed; .env.example documents the variables
 .env

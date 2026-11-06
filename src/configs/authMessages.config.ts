@@ -20,21 +20,7 @@ export const authMessages = {
         magicLinkNeedsEmail: 'Enter your work email above first.',
         magicLinkSent: (email: string) =>
             `If ${email} has an account, a sign-in link is on its way. Open it on any device; it works once, for one hour.`,
-        noAccount: 'New here?',
-        createAccount: 'Create your account',
-    },
-    signUp: {
-        title: 'Create your account',
-        subtitle: 'New accounts can read published knowledge. An administrator can make you an editor.',
-        displayNameLabel: 'Your name',
-        displayNameHint: 'Shown on articles and BRDs you write.',
-        emailLabel: 'Work email',
-        emailHint: 'Use your company email address.',
-        passwordLabel: 'Choose a password',
-        passwordHint: 'At least 8 characters. A short sentence is easy to remember and hard to guess.',
-        submit: 'Create my account',
-        haveAccount: 'Already have an account?',
-        signIn: 'Sign in',
+        noAccount: 'Need access? Ask an administrator to add you.',
     },
     checkEmail: {
         title: 'Check your email',
@@ -59,6 +45,7 @@ export const authMessages = {
     },
     resetPassword: {
         title: 'Choose a new password',
+        passwordHint: 'At least 8 characters. A short sentence is easy to remember and hard to guess.',
         subtitle: 'Pick something you’ll remember. You’ll stay signed in afterwards.',
         passwordLabel: 'New password',
         confirmLabel: 'Type it again',
@@ -82,11 +69,11 @@ export const authMessages = {
         WEAK_PASSWORD: 'That password is too easy to guess. Try a longer one, like a short sentence.',
         SAME_PASSWORD: 'That’s your current password. Choose a different one.',
         RATE_LIMITED: 'Too many tries in a row. Wait a minute, then try again.',
+        EMAIL_RATE_LIMITED:
+            'Too many emails were sent in a short time. Wait a few minutes, then try again (an administrator can raise the limit in Supabase → Authentication → Rate limits).',
         AUTH_UNAVAILABLE: 'We can’t reach the sign-in service right now. Please try again in a moment.',
         AUTH_FAILED: 'Something went wrong. Please try again.',
         RESET_SESSION_MISSING: 'Your reset link has expired. Ask for a new one.',
-        DOMAIN_NOT_ALLOWED:
-            'Sign-up is limited to company email addresses. Use your work email, or ask an administrator to invite you.',
         EMAIL_NOT_SENT:
             'We couldn’t send the confirmation email to that address. Ask an administrator to add your account.',
     },

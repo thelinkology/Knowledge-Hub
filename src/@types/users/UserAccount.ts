@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DisplayNameSchema, EmailSchema } from '@/@types/auth/AuthSchema'
+import { DisplayNameSchema, EmailSchema, NewPasswordSchema } from '@/@types/auth/AuthSchema'
 import { ROLES, type Role } from '@/@types/auth/Roles'
 
 export interface UserAccount {
@@ -27,11 +27,24 @@ export const SetRoleSchema = z.object({ role: z.enum(ROLES) })
 export type SetRoleInput = z.infer<typeof SetRoleSchema>
 
 /** POST /api/admin/users — invites someone by email with a role */
-export const InviteUserSchema = z.object({
-    email: EmailSchema,
-    displayName: DisplayNameSchema,
-    role: z.enum(ROLES).default('viewer'),
-})
+/** How a new account gets in: an emailed invitation, or a password the administrator sets and shares */
+export const ACCESS_METHODS = ['email', 'password'] as const
+export type AccessMethod = (typeof ACCESS_METHODS)[number]
+
+/** POST /api/admin/users: accounts are only ever created by administrators */
+export const InviteUserSchema = z
+    .object({
+        email: EmailSchema,
+        displayName: DisplayNameSchema,
+        role: z.enum(ROLES).default('viewer'),
+        method: z.enum(ACCESS_METHODS).default('email'),
+        password: z.string().max(72).default(''),
+    })
+    .superRefine((input, ctx) => {
+        if (input.method !== 'password') return
+        const check = NewPasswordSchema.safeParse(input.password)
+        if (!check.success) ctx.addIssue({ code: 'custom', path: ['password'], message: check.error.issues[0].message })
+    })
 export type InviteUserInput = z.infer<typeof InviteUserSchema>
 
 /** PATCH /api/me/profile */

@@ -1,0 +1,35 @@
+/* The public welcome page (components/welcome): backdrop patterns and the floating preview cards */
+
+.welcome-dots {
+    background-image: radial-gradient(rgb(15 108 189 / 0.12) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+
+.dark .welcome-dots {
+    background-image: radial-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px);
+}
+
+.welcome-dots-light {
+    background-image: radial-gradient(rgb(255 255 255 / 0.35) 1px, transparent 1px);
+    background-size: 18px 18px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .welcome-float {
+        animation: welcome-float 7s ease-in-out infinite;
+    }
+    .welcome-float-delayed {
+        animation: welcome-float 7s ease-in-out 1.5s infinite;
+    }
+}
+
+@keyframes welcome-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}

@@ -75,8 +75,8 @@ revisions, rules, intakes, BRDs; admins read the audit log. No browser-role writ
 
 | Folder | Main exports |
 |---|---|
-| `actions/auth` | `getCurrentUser`, `requireUser`, `assertPermission`, `requirePagePermission`, sign in/up/out, password reset, `sendSignInLink` (magic link, existing accounts only) (`SIGNUP_EMAIL_DOMAINS`: commas, semicolons or spaces) |
-| `actions/users` | `getUsers`, `getPeople`, `setUserRole`, `inviteUser`, `sendUserSignInLink`, `deleteUserAccount`, `getMyProfile`, `updateProfile` |
+| `actions/auth` | `getCurrentUser`, `requireUser`, `assertPermission`, `requirePagePermission`, sign in/out, password reset, `sendSignInLink` (magic link, existing accounts only). No self sign-up |
+| `actions/users` | `getUsers`, `getPeople`, `setUserRole`, `inviteUser` (emailed invitation or admin-set password), `sendUserSignInLink`, `deleteUserAccount`, `getMyProfile`, `updateProfile` |
 | `actions/products` | `getProducts` (cached), `createProduct`, `updateProduct`, `knownProductIds`, `parseMilestones` |
 | `actions/clients` | `getClients`, `getClientOptions`, `getClient(id, viewer)`, `createClient`, `updateClient`, `deleteClient`, `assertClientExists` |
 | `actions/knowledge` | collections CRUD + `arrangeCollection` (sub-article tree); `getArticles`, `getArticleView`, `getArticleEditor`, `createArticle`, `saveArticle`, `setArticleStatus`, `deleteArticle`, revisions + restore; `searchKnowledge` |
@@ -134,7 +134,7 @@ revisions, rules, intakes, BRDs; admins read the audit log. No browser-role writ
 `/` home · `/knowledge` · `/knowledge/collections/[id]` · `/knowledge/articles/[id]` (+ `/edit`) · `/library` ·
 `/library/[id]` (+ `/edit`) · `/clients` · `/clients/[id]?tab=` · `/intakes` · `/intakes/[id]` · `/brds` ·
 `/brds/[id]` (+ `/edit`) · `/profile` · `/admin/users` · `/admin/products` · `/admin/intake` · `/admin/integrations` ·
-`/admin/audit`. Public: `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/privacy`.
+`/admin/audit`. Public: `/` for signed-out visitors (proxy rewrite to `/welcome`), `/login`, `/forgot-password`, `/reset-password`, `/privacy`.
 
 ---
 

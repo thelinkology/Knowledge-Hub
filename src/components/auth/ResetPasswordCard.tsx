@@ -86,9 +86,7 @@ export default function ResetPasswordCard({ hasSession }: { hasSession: boolean 
                                 />
                             )}
                         />
-                        <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                            {authMessages.signUp.passwordHint}
-                        </p>
+                        <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{m.passwordHint}</p>
                     </FormItem>
                     <FormItem
                         label={m.confirmLabel}
