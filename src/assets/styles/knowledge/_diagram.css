@@ -1,107 +1,68 @@
 /*
- * Architecture diagrams (components/library/diagram, Diagram.ts): component kind colours, the canvas,
- * its components (nodes), connections and note banners. Each kind sets two variables that nodes, legend
- * swatches and the palette read, so components never carry hex values.
+ * Architecture diagrams (components/library/diagram, Diagram.ts, DiagramComponent.ts): component type
+ * colours, the canvas, its components (nodes), connections, note banners and the image export. Each colour
+ * class (.diagram-color-<DiagramColor>) sets two variables that nodes, legend swatches and the palette
+ * read, so components never carry hex values.
  */
 
-/* ── Component kinds (light) ── */
-.diagram-kind-source_system {
-    --diagram-kind: #4a5670;
-    --diagram-kind-subtle: rgb(74 86 112 / 0.12);
+/* ── Component type colours: light and dark (dark: brighter, ≥ 3:1 on gray-800) ── */
+.diagram-color-slate {
+    --diagram-light: #4a5670;
+    --diagram-dark: #94a3b8;
 }
-.diagram-kind-database {
-    --diagram-kind: #0f6cbd;
-    --diagram-kind-subtle: rgb(15 108 189 / 0.1);
+.diagram-color-blue {
+    --diagram-light: #0f6cbd;
+    --diagram-dark: #60a5fa;
 }
-.diagram-kind-cube {
-    --diagram-kind: #7c3aed;
-    --diagram-kind-subtle: rgb(124 58 237 / 0.1);
+.diagram-color-violet {
+    --diagram-light: #7c3aed;
+    --diagram-dark: #a78bfa;
 }
-.diagram-kind-dimension {
-    --diagram-kind: #0f766e;
-    --diagram-kind-subtle: rgb(15 118 110 / 0.1);
+.diagram-color-teal {
+    --diagram-light: #0f766e;
+    --diagram-dark: #2dd4bf;
 }
-.diagram-kind-procedure {
-    --diagram-kind: #c2410c;
-    --diagram-kind-subtle: rgb(194 65 12 / 0.1);
+.diagram-color-orange {
+    --diagram-light: #c2410c;
+    --diagram-dark: #fb923c;
 }
-.diagram-kind-fact {
-    --diagram-kind: #15803d;
-    --diagram-kind-subtle: rgb(21 128 61 / 0.1);
+.diagram-color-green {
+    --diagram-light: #15803d;
+    --diagram-dark: #4ade80;
 }
-.diagram-kind-report {
-    --diagram-kind: #a16207;
-    --diagram-kind-subtle: rgb(161 98 7 / 0.12);
+.diagram-color-amber {
+    --diagram-light: #a16207;
+    --diagram-dark: #facc15;
 }
-.diagram-kind-person {
-    --diagram-kind: #be123c;
-    --diagram-kind-subtle: rgb(190 18 60 / 0.1);
+.diagram-color-rose {
+    --diagram-light: #be123c;
+    --diagram-dark: #fb7185;
 }
-.diagram-kind-action {
-    --diagram-kind: #4338ca;
-    --diagram-kind-subtle: rgb(67 56 202 / 0.1);
+.diagram-color-indigo {
+    --diagram-light: #4338ca;
+    --diagram-dark: #818cf8;
 }
-.diagram-kind-pipeline {
-    --diagram-kind: #0e7490;
-    --diagram-kind-subtle: rgb(14 116 144 / 0.1);
+.diagram-color-cyan {
+    --diagram-light: #0e7490;
+    --diagram-dark: #22d3ee;
 }
-.diagram-kind-service {
-    --diagram-kind: #a21caf;
-    --diagram-kind-subtle: rgb(162 28 175 / 0.1);
+.diagram-color-fuchsia {
+    --diagram-light: #a21caf;
+    --diagram-dark: #e879f9;
 }
-.diagram-kind-file {
-    --diagram-kind: #4d7c0f;
-    --diagram-kind-subtle: rgb(77 124 15 / 0.12);
+.diagram-color-lime {
+    --diagram-light: #4d7c0f;
+    --diagram-dark: #a3e635;
 }
 
-/* ── Component kinds (dark: brighter, ≥ 3:1 on gray-800) ── */
-.dark .diagram-kind-source_system {
-    --diagram-kind: #94a3b8;
-    --diagram-kind-subtle: rgb(148 163 184 / 0.16);
+[class*='diagram-color-'] {
+    --diagram-kind: var(--diagram-light);
+    --diagram-kind-subtle: color-mix(in srgb, var(--diagram-light) 12%, transparent);
 }
-.dark .diagram-kind-database {
-    --diagram-kind: #60a5fa;
-    --diagram-kind-subtle: rgb(96 165 250 / 0.16);
-}
-.dark .diagram-kind-cube {
-    --diagram-kind: #a78bfa;
-    --diagram-kind-subtle: rgb(167 139 250 / 0.16);
-}
-.dark .diagram-kind-dimension {
-    --diagram-kind: #2dd4bf;
-    --diagram-kind-subtle: rgb(45 212 191 / 0.16);
-}
-.dark .diagram-kind-procedure {
-    --diagram-kind: #fb923c;
-    --diagram-kind-subtle: rgb(251 146 60 / 0.16);
-}
-.dark .diagram-kind-fact {
-    --diagram-kind: #4ade80;
-    --diagram-kind-subtle: rgb(74 222 128 / 0.16);
-}
-.dark .diagram-kind-report {
-    --diagram-kind: #facc15;
-    --diagram-kind-subtle: rgb(250 204 21 / 0.16);
-}
-.dark .diagram-kind-person {
-    --diagram-kind: #fb7185;
-    --diagram-kind-subtle: rgb(251 113 133 / 0.16);
-}
-.dark .diagram-kind-action {
-    --diagram-kind: #818cf8;
-    --diagram-kind-subtle: rgb(129 140 248 / 0.16);
-}
-.dark .diagram-kind-pipeline {
-    --diagram-kind: #22d3ee;
-    --diagram-kind-subtle: rgb(34 211 238 / 0.16);
-}
-.dark .diagram-kind-service {
-    --diagram-kind: #e879f9;
-    --diagram-kind-subtle: rgb(232 121 249 / 0.16);
-}
-.dark .diagram-kind-file {
-    --diagram-kind: #a3e635;
-    --diagram-kind-subtle: rgb(163 230 53 / 0.16);
+
+.dark [class*='diagram-color-'] {
+    --diagram-kind: var(--diagram-dark);
+    --diagram-kind-subtle: color-mix(in srgb, var(--diagram-dark) 16%, transparent);
 }
 
 /* Legend and palette swatch */
@@ -111,9 +72,18 @@
 }
 
 .diagram-kind-icon {
-    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-base;
+    @apply flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg text-base;
     color: var(--diagram-kind);
     background: var(--diagram-kind-subtle);
+}
+
+/* A component type with its own image: the image on a white tile (logos usually expect a light background) */
+.diagram-kind-icon-image {
+    @apply border border-gray-200 bg-white p-0.5 dark:border-gray-600;
+}
+
+.diagram-kind-icon-image img {
+    @apply h-full w-full object-contain;
 }
 
 /* ── The canvas (React Flow, themed through its --xy-* variables) ── */
@@ -264,4 +234,51 @@
 
 .diagram-note-icon {
     @apply mt-0.5 shrink-0 text-base;
+}
+
+/* ── Image export (PNG / JPG / PDF): always drawn in the light theme on white ── */
+.dark .diagram-exporting [class*='diagram-color-'] {
+    --diagram-kind: var(--diagram-light);
+    --diagram-kind-subtle: color-mix(in srgb, var(--diagram-light) 12%, transparent);
+}
+
+.diagram-canvas.diagram-exporting .react-flow {
+    --diagram-edge: var(--gray-400);
+    --xy-edge-stroke: var(--gray-400);
+    --xy-edge-label-background-color: #ffffff;
+    --xy-edge-label-color: var(--gray-700);
+}
+
+.diagram-exporting .diagram-node {
+    background: #ffffff;
+    border-top-color: var(--gray-200);
+    border-right-color: var(--gray-200);
+    border-bottom-color: var(--gray-200);
+    box-shadow: none;
+}
+
+.diagram-exporting .diagram-node-label {
+    color: var(--gray-900);
+}
+
+.diagram-exporting .diagram-node-subtitle {
+    color: var(--gray-500);
+}
+
+.diagram-exporting .diagram-step {
+    background: var(--gray-900);
+    color: #ffffff;
+}
+
+.diagram-exporting .diagram-kind-icon-image {
+    border-color: var(--gray-200);
+}
+
+.diagram-exporting .react-flow__arrowhead polyline {
+    stroke: var(--gray-400);
+    fill: var(--gray-400);
+}
+
+.diagram-exporting .react-flow__edge-text {
+    fill: var(--gray-700);
 }

@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import AssetSWRProvider from '@/components/library/reader/AssetSWRProvider'
 import AssetClientPage from '@/components/library/reader/AssetClientPage'
 import { getAsset } from '@/server/actions/library'
+import { getDiagramComponents } from '@/server/actions/diagramComponents'
 import { requirePagePermission } from '@/server/actions/auth'
 import { isNotFound } from '@/server/utils/errors'
 import { isUuid } from '@/utils/ids'
@@ -26,8 +27,10 @@ export default async function AssetPage({ params }: AssetPageProps) {
         throw error
     }
 
+    const diagramComponents = asset.kind === 'reference_architecture' ? await getDiagramComponents() : undefined
+
     return (
-        <AssetSWRProvider assetId={assetId} asset={asset}>
+        <AssetSWRProvider assetId={assetId} asset={asset} diagramComponents={diagramComponents}>
             <AssetClientPage assetId={assetId} />
         </AssetSWRProvider>
     )

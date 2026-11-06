@@ -1,74 +1,19 @@
 import { z } from 'zod'
-import type { DiagramIconKey } from '@/configs/icons.config'
+import { DIAGRAM_COMPONENT_CODE } from './DiagramComponent'
 
 /*
  * A reference architecture's drag-and-drop diagram (library_assets.diagram). A diagram has views
  * (scenarios such as "GL planning only" / "Advanced FP&A planning"); each view has components (nodes),
- * labelled connections (edges) and notes. Components can carry a build step and build guidance (Markdown).
- * The server validates the whole document with DiagramSchema before storing it.
+ * labelled connections (edges) and notes. A node's `kind` is a component type's code. Components can
+ * carry a build step and build guidance (Markdown). The server validates the whole document with
+ * DiagramSchema before storing it.
  */
 
-/** The component types, in palette and legend order */
-export const DIAGRAM_NODE_KINDS = [
-    'source_system',
-    'database',
-    'cube',
-    'dimension',
-    'procedure',
-    'fact',
-    'report',
-    'person',
-    'action',
-    'pipeline',
-    'service',
-    'file',
-] as const
-export type DiagramNodeKind = (typeof DIAGRAM_NODE_KINDS)[number]
-
-export const diagramKindLabel: Record<DiagramNodeKind, string> = {
-    source_system: 'Source system',
-    database: 'SQL database',
-    cube: 'Cube (write-back)',
-    dimension: 'Dimension',
-    procedure: 'Stored procedure / trigger',
-    fact: 'Materialized fact',
-    report: 'Reporting output',
-    person: 'Person / role',
-    action: 'Product action',
-    pipeline: 'Pipeline / integration',
-    service: 'Cloud service',
-    file: 'File / spreadsheet',
-}
-
-export const diagramKindDescription: Record<DiagramNodeKind, string> = {
-    source_system: 'Where data comes from: ERP, CRM, HR or another line-of-business system.',
-    database: 'A SQL database, such as the Acterys database on Azure SQL.',
-    cube: 'A planning cube people write back to (budgets, forecasts).',
-    dimension: 'A dimension table: scenarios, accounts, workflow states…',
-    procedure: 'A stored procedure or trigger that runs logic in the database.',
-    fact: 'A fact table materialized for reporting.',
-    report: 'A report or dashboard, such as Power BI.',
-    person: 'A person or role who plans, approves or reads.',
-    action: 'A product action, e.g. an Acterys copy cube or allocation.',
-    pipeline: 'Moves data: a Fabric pipeline, Azure Data Factory, Power Automate…',
-    service: 'A cloud service: Fabric workspace, Azure Function, Logic App…',
-    file: 'A file or spreadsheet: Excel uploads, CSV drops, SharePoint lists.',
-}
-
-export const diagramKindIcon: Record<DiagramNodeKind, DiagramIconKey> = {
-    source_system: 'source',
-    database: 'database',
-    cube: 'cube',
-    dimension: 'dimension',
-    procedure: 'procedure',
-    fact: 'fact',
-    report: 'report',
-    person: 'person',
-    action: 'action',
-    pipeline: 'pipeline',
-    service: 'service',
-    file: 'file',
-}
+/**
+ * A node's component type: the code of a diagram_components row (DiagramComponent.ts). Types are data
+ * (editors manage them), so any well-formed code is accepted; an unknown one shows the fallback look.
+ */
+export type DiagramNodeKind = string
 
 export const DIAGRAM_NOTE_TONES = ['info', 'warning'] as const
 export type DiagramNoteTone = (typeof DIAGRAM_NOTE_TONES)[number]
@@ -105,7 +50,7 @@ const CoordinateSchema = z.number().finite().transform(clampCoordinate)
 
 export const DiagramNodeSchema = z.object({
     id: DiagramIdSchema,
-    kind: z.enum(DIAGRAM_NODE_KINDS),
+    kind: z.string().regex(DIAGRAM_COMPONENT_CODE, 'Choose a component type'),
     label: z.string().trim().min(1, 'Give the component a name').max(DIAGRAM_LIMITS.nodeLabel),
     subtitle: z.string().trim().max(DIAGRAM_LIMITS.nodeSubtitle).default(''),
     x: CoordinateSchema,

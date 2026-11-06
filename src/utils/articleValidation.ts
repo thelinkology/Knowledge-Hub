@@ -25,9 +25,16 @@ export function getPublishIssues({ title, summary, body }: { title: string; summ
     return issues
 }
 
+/** A Heading 2 / Heading 3 of a document and the id MarkdownContent gives it */
+export interface OutlineHeading {
+    level: 2 | 3
+    text: string
+    id: string
+}
+
 /** Headings in a Markdown document, for the "In this article" outline */
-export function getOutline(markdown: string): { level: 2 | 3; text: string; id: string }[] {
-    const outline: { level: 2 | 3; text: string; id: string }[] = []
+export function getOutline(markdown: string): OutlineHeading[] {
+    const outline: OutlineHeading[] = []
     const used = new Map<string, number>()
     let inFence = false
     for (const line of markdown.split(/\r?\n/)) {

@@ -7,19 +7,46 @@ import {
     diagramFileName,
     diagramToMarkdown,
     duplicateView,
+    componentResolver,
     edgeSides,
+    exportImageSize,
+    fitWithin,
     formatDiagramSummary,
     freePosition,
     glPlanningStarterView,
     kindsInView,
+    markdownToPlainText,
     moveItem,
     newDiagramId,
     nextStep,
+    pdfText,
     removeElements,
     renumberSteps,
     summarizeDiagram,
 } from './diagram'
 import { DiagramSchema, parseDiagram, type DiagramNode, type DiagramView } from '@/@types/library/Diagram'
+import {
+    DiagramComponentSchema,
+    type DiagramColor,
+    type DiagramComponent,
+    type DiagramIconKey,
+} from '@/@types/library/DiagramComponent'
+
+/** The built-in types as seeded by 20261106000300_diagram_components.sql (a subset is enough here) */
+const type = (code: string, name: string, position: number, color: DiagramColor, icon: DiagramIconKey) =>
+    ({ id: `id-${code}`, code, name, description: '', color, icon, imageUrl: '', position }) as DiagramComponent
+
+const COMPONENTS: DiagramComponent[] = [
+    type('report', 'Reporting output', 7, 'amber', 'report'),
+    type('source_system', 'Source system', 1, 'slate', 'source'),
+    type('database', 'SQL database', 2, 'blue', 'database'),
+    type('cube', 'Cube (write-back)', 3, 'violet', 'cube'),
+    type('dimension', 'Dimension', 4, 'teal', 'dimension'),
+    type('procedure', 'Stored procedure / trigger', 5, 'orange', 'procedure'),
+    type('fact', 'Materialized fact', 6, 'green', 'fact'),
+    type('person', 'Person / role', 8, 'rose', 'person'),
+    type('action', 'Product action', 9, 'indigo', 'action'),
+]
 
 const node = (id: string, extra: Partial<DiagramNode> = {}): DiagramNode => ({
     id,
@@ -83,7 +110,10 @@ describe('DiagramSchema / parseDiagram', () => {
         expect(parse({ step: 0 })).toBe(false)
         expect(parse({ step: 1.5 })).toBe(false)
         expect(parse({ step: 100 })).toBe(false)
-        expect(parse({ kind: 'flow' })).toBe(false)
+        expect(parse({ kind: 'Not a code!' })).toBe(false)
+        expect(parse({ kind: '' })).toBe(false)
+        // Any well-formed code is accepted: types are data (a custom or deleted type)
+        expect(parse({ kind: 'azure_function_k3x9q2' })).toBe(true)
         expect(parse({ label: '  ' })).toBe(false)
         expect(parse({ step: 99 })).toBe(true)
     })
@@ -182,7 +212,7 @@ describe('editing', () => {
         const v = view({ nodes: [node('a', { x: 100, y: 100 })] })
         expect(freePosition(view(), { x: 107, y: 93 })).toEqual({ x: 100, y: 100 })
         expect(freePosition(v, { x: 100, y: 100 })).toEqual({ x: 140, y: 140 })
-        const created = createNode(v, 'cube', { x: 400, y: 0 })
+        const created = createNode(v, { code: 'cube', name: 'Cube (write-back)' }, { x: 400, y: 0 })
         expect(created).toMatchObject({ kind: 'cube', label: 'Cube (write-back)', x: 400, y: 0, step: null })
     })
 
@@ -211,18 +241,43 @@ describe('summaries and Markdown', () => {
         expect(formatDiagramSummary({ views: 2, components: 14 })).toBe('2 views · 14 components')
     })
 
-    it('lists the kinds a view uses in legend order', () => {
-        expect(
-            kindsInView(view({ nodes: [node('a', { kind: 'report' }), node('b', { kind: 'source_system' })] })),
-        ).toEqual(['source_system', 'report'])
+    it('lists the types a view uses in palette order, deleted types once at the end', () => {
+        const v = view({
+            nodes: [
+                node('a', { kind: 'report' }),
+                node('b', { kind: 'source_system' }),
+                node('c', { kind: 'gone' }),
+                node('d', { kind: 'also_gone' }),
+            ],
+        })
+        const legend = kindsInView(v, COMPONENTS)
+        expect(legend.map((c) => c.code)).toEqual(['source_system', 'report', 'gone'])
+        expect(legend[2]).toMatchObject({ id: '', name: 'Component', color: 'slate' })
+    })
+
+    it('resolves types by code, with a fallback look for deleted ones', () => {
+        const resolve = componentResolver(COMPONENTS)
+        expect(resolve('cube').name).toBe('Cube (write-back)')
+        expect(resolve('deleted')).toMatchObject({ id: '', code: 'deleted', name: 'Component', icon: 'service' })
     })
 
     it('is empty without views', () => {
-        expect(diagramToMarkdown({ views: [] }, 'Anything')).toBe('')
+        expect(diagramToMarkdown({ views: [] }, 'Anything', COMPONENTS)).toBe('')
     })
 
-    it('writes a brief per view: components by kind, connections, build sequence and notes', () => {
-        const markdown = diagramToMarkdown({ views: [glPlanningStarterView()] }, 'GL planning')
+    it('groups components whose type was deleted under "Other components"', () => {
+        const markdown = diagramToMarkdown(
+            { views: [view({ nodes: [node('a', { kind: 'cube' }), node('b', { kind: 'gone', step: 1 })] })] },
+            'T',
+            COMPONENTS,
+        )
+        expect(markdown).toContain('**Cube (write-back)**\n\n- A')
+        expect(markdown).toContain('**Other components**\n\n- B')
+        expect(markdown).toContain('1. **B** (Other component)')
+    })
+
+    it('writes a brief per view: components by type, connections, build sequence and notes', () => {
+        const markdown = diagramToMarkdown({ views: [glPlanningStarterView()] }, 'GL planning', COMPONENTS)
         expect(markdown.startsWith('# GL planning\n\n## GL planning only\n\nBudget and forecast')).toBe(true)
         expect(markdown).toContain('### Components')
         expect(markdown).toContain('**Source system**\n\n- Financials from ERP — GL actuals, chart of accounts')
@@ -241,6 +296,7 @@ describe('summaries and Markdown', () => {
         const markdown = diagramToMarkdown(
             { views: [view({ name: 'A\nB', nodes: [node('a', { label: 'x\ny' })] })] },
             '',
+            COMPONENTS,
         )
         expect(markdown.startsWith('# A B\n')).toBe(true)
         expect(markdown).toContain('- x y')
@@ -249,5 +305,60 @@ describe('summaries and Markdown', () => {
     it('names the download after the title', () => {
         expect(diagramFileName('GL Planning (Acterys)')).toBe('gl-planning-acterys-architecture.md')
         expect(diagramFileName('')).toBe('diagram-architecture.md')
+        expect(diagramFileName('GL Planning', { name: 'Advanced FP&A', extension: 'png' })).toBe(
+            'gl-planning-advanced-fp-a.png',
+        )
+        expect(diagramFileName('', { name: '', extension: 'pdf' })).toBe('diagram.pdf')
+    })
+})
+
+describe('export helpers', () => {
+    it('keeps what the PDF fonts can draw and replaces the rest', () => {
+        expect(pdfText('Plan “A” — 5 € … café')).toBe('Plan “A” — 5 € … café')
+        expect(pdfText('ERP → SQL ≥ 2 ✓')).toBe('ERP -> SQL >= 2 v')
+        // ó is in the font; ź loses its accent; Ł has no plain form
+        expect(pdfText('Łódź 日本\r\nnext')).toBe('?ódz ??\nnext')
+    })
+
+    it('fits images in a box without enlarging them', () => {
+        expect(fitWithin(1000, 500, 500, 500)).toEqual({ width: 500, height: 250 })
+        expect(fitWithin(100, 50, 500, 500)).toEqual({ width: 100, height: 50 })
+        expect(fitWithin(0, 50, 500, 500)).toEqual({ width: 0, height: 0 })
+    })
+
+    it('sizes the exported image to the diagram plus padding, capped', () => {
+        expect(exportImageSize({ width: 1000, height: 400 })).toEqual({ width: 1096, height: 496 })
+        const huge = exportImageSize({ width: 20000, height: 1000 }, 48, 6000)
+        expect(huge.width).toBe(6000)
+        expect(huge.height).toBeLessThan(400)
+    })
+
+    it('turns build guidance into plain text', () => {
+        const text = markdownToPlainText(
+            '## Steps\n\n- Load **actuals** with [the pipeline](https://example.com/p)\n- Run `sp_load`\n\n> [!WARNING]\n> _Check_ the totals\n\n![diagram](/x.png)',
+        )
+        expect(text).toBe(
+            'Steps\n\n• Load actuals with the pipeline (https://example.com/p)\n• Run sp_load\n\nCheck the totals\n\ndiagram',
+        )
+    })
+})
+
+describe('DiagramComponentSchema', () => {
+    const valid = { name: 'Azure Function', description: '', color: 'blue', icon: 'service', imageUrl: '' }
+
+    it('accepts uploaded images and https links only', () => {
+        expect(DiagramComponentSchema.safeParse(valid).success).toBe(true)
+        const image = (imageUrl: string) => DiagramComponentSchema.safeParse({ ...valid, imageUrl }).success
+        expect(image('/api/media/0b8f0d4e-8e2a-4d55-9c1f-3a4f1b2c3d4e')).toBe(true)
+        expect(image('https://cdn.example.com/logo.png')).toBe(true)
+        expect(image('http://cdn.example.com/logo.png')).toBe(false)
+        expect(image('javascript:alert(1)')).toBe(false)
+        expect(image('/api/media/../../etc')).toBe(false)
+    })
+
+    it('refuses unknown colours and icons, and empty names', () => {
+        expect(DiagramComponentSchema.safeParse({ ...valid, color: 'red' }).success).toBe(false)
+        expect(DiagramComponentSchema.safeParse({ ...valid, icon: 'rocket' }).success).toBe(false)
+        expect(DiagramComponentSchema.safeParse({ ...valid, name: '   ' }).success).toBe(false)
     })
 })

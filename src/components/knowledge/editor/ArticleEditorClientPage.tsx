@@ -23,6 +23,7 @@ import { ArticleKindTag, PublishStatusTag } from '@/components/shared/KnowledgeT
 import ArticleDetailsFields, { ArticleTitleFields } from './ArticleDetailsFields'
 import ArticleReader from '../reader/ArticleReader'
 import RevisionHistoryDialog from './RevisionHistoryDialog'
+import ArticleOutlinePreview from './ArticleOutlinePreview'
 import { ARTICLE_FIELD_IDS, toFormData, toSaveInput } from './articleForm'
 import { DeleteIcon, ExpandIcon, HistoryIcon, PreviewIcon, SaveIcon, EditIcon } from '@/configs/icons.config'
 import { apiDeleteArticle, apiSaveArticle, apiSetArticleStatus } from '@/services/knowledge'
@@ -349,6 +350,9 @@ function ArticleEditor({ data }: { data: ArticleEditorData }) {
                                 </Card>
                                 <Card header={{ content: 'Details' }}>
                                     <ArticleDetailsFields data={data} />
+                                </Card>
+                                <Card header={{ content: 'In this article' }}>
+                                    <ArticleOutlinePreview body={values.body ?? ''} />
                                 </Card>
                             </aside>
                         </div>

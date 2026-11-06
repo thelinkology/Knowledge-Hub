@@ -14,9 +14,10 @@ import { tryGetErrorMessage } from '@/utils/errors'
 import type { ProductInput } from '@/@types/products/Product'
 
 /**
- * The product's logo for "Browse by product" cards: upload an image (checked on the server, stored in the
- * private image library) or paste an https link. Empty shows a monogram tile in the product colour.
- * Use the logo files the vendor publishes for partners, and follow their brand guidelines.
+ * The product's image on "Browse by product" cards (a logo or an illustration, shown centred under the
+ * text): upload an image (checked on the server, stored in the private image library) or paste an https
+ * link. Empty shows a monogram tile in the product colour. For vendor logos, use the files the vendor
+ * publishes for partners and follow their brand guidelines.
  */
 export default function ProductLogoField() {
     const id = useId()
@@ -44,7 +45,12 @@ export default function ProductLogoField() {
     }
 
     return (
-        <FormItem label="Logo" htmlFor={`${id}-link`} invalid={!!errors.logoUrl} errorMessage={errors.logoUrl?.message}>
+        <FormItem
+            label="Card image"
+            htmlFor={`${id}-link`}
+            invalid={!!errors.logoUrl}
+            errorMessage={errors.logoUrl?.message}
+        >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="flex h-16 w-28 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
                     <ProductLogo
@@ -59,7 +65,7 @@ export default function ProductLogoField() {
                             type="file"
                             accept={IMAGE_ACCEPT}
                             className="sr-only"
-                            aria-label="Upload a logo image"
+                            aria-label="Upload the card image"
                             onChange={(e) => {
                                 const file = e.target.files?.[0]
                                 if (file) void upload(file)
@@ -73,7 +79,7 @@ export default function ProductLogoField() {
                             loading={uploading}
                             onClick={() => fileInput.current?.click()}
                         >
-                            {logoUrl ? 'Replace logo' : 'Upload logo'}
+                            {logoUrl ? 'Replace image' : 'Upload image'}
                         </Button>
                         {logoUrl && (
                             <Button
@@ -94,7 +100,7 @@ export default function ProductLogoField() {
                             <Input
                                 id={`${id}-link`}
                                 size="sm"
-                                placeholder="…or paste an https:// link to the logo"
+                                placeholder="…or paste an https:// link to the image"
                                 autoComplete="off"
                                 invalid={!!errors.logoUrl}
                                 {...field}
@@ -104,8 +110,9 @@ export default function ProductLogoField() {
                 </div>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-                PNG, JPEG, GIF or WebP up to 5 MB; a transparent background looks best. Without a logo the card shows
-                the product’s initials in its colour.
+                A logo or an illustration, shown centred under the card’s text. PNG, JPEG, GIF or WebP up to 5 MB; a
+                transparent background looks best. Without one the card shows the product’s initials in its colour.
+                Administrators can also change it from the card on the Knowledge page.
             </p>
         </FormItem>
     )

@@ -10,17 +10,10 @@ import MarkdownContent from '@/components/shared/MarkdownContent'
 import DiagramKindIcon from '../../diagram/DiagramKindIcon'
 import { DeleteIcon, ForwardIcon, RefreshIcon } from '@/configs/icons.config'
 import { nextStep, removeElements } from '@/utils/diagram'
-import {
-    DIAGRAM_LIMITS,
-    DIAGRAM_NODE_KINDS,
-    diagramKindLabel,
-    type DiagramEdge,
-    type DiagramNode,
-    type DiagramView,
-} from '@/@types/library/Diagram'
+import { DIAGRAM_LIMITS, type DiagramEdge, type DiagramNode, type DiagramView } from '@/@types/library/Diagram'
+import useDiagramComponents from '@/utils/hooks/useDiagramComponents'
+import classNames from '@/utils/classNames'
 import type { SelectionUpdate, ViewUpdate } from '../../diagram/DiagramCanvas'
-
-const KIND_OPTIONS = DIAGRAM_NODE_KINDS.map((kind) => ({ value: kind, label: diagramKindLabel[kind] }))
 
 /** Labels people use on connections (offered as suggestions) */
 const EDGE_LABEL_SUGGESTIONS = [
@@ -41,10 +34,17 @@ interface DiagramInspectorProps {
     selected: string[]
     onViewChange: (update: ViewUpdate) => void
     onSelectedChange: (update: SelectionUpdate) => void
+    className?: string
 }
 
 /** The right-hand panel: edits the selected component or connection (or explains how to start) */
-export default function DiagramInspector({ view, selected, onViewChange, onSelectedChange }: DiagramInspectorProps) {
+export default function DiagramInspector({
+    view,
+    selected,
+    onViewChange,
+    onSelectedChange,
+    className,
+}: DiagramInspectorProps) {
     const node = selected.length === 1 ? view.nodes.find((n) => n.id === selected[0]) : undefined
     const edge = selected.length === 1 && !node ? view.edges.find((e) => e.id === selected[0]) : undefined
 
@@ -55,7 +55,10 @@ export default function DiagramInspector({ view, selected, onViewChange, onSelec
 
     return (
         <aside
-            className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+            className={classNames(
+                'rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800',
+                className,
+            )}
             aria-label="Inspector"
         >
             {node ? (
@@ -107,6 +110,14 @@ interface NodeInspectorProps {
 
 function NodeInspector({ node, view, onViewChange, onRemove }: NodeInspectorProps) {
     const id = useId()
+    const { components, resolve } = useDiagramComponents()
+    const component = resolve(node.kind)
+    const kindOptions = components.map((c) => ({ value: c.code, label: c.name }))
+    // A node whose type was deleted: offer "Component (deleted type)" so the picker isn't blank
+    const kindValue = kindOptions.find((o) => o.value === node.kind) ?? {
+        value: node.kind,
+        label: 'Component (deleted type)',
+    }
     const [guidanceMode, setGuidanceMode] = useState<'write' | 'preview'>('write')
 
     const patch = (changes: Partial<DiagramNode>) =>
@@ -125,7 +136,7 @@ function NodeInspector({ node, view, onViewChange, onRemove }: NodeInspectorProp
     return (
         <div>
             <div className="mb-4 flex items-center gap-2">
-                <DiagramKindIcon kind={node.kind} />
+                <DiagramKindIcon component={component} />
                 <h3 className="min-w-0 truncate text-base font-semibold">{node.label.trim() || 'Component'}</h3>
             </div>
             <FormItem
@@ -151,7 +162,7 @@ function NodeInspector({ node, view, onViewChange, onRemove }: NodeInspectorProp
                     size="sm"
                     value={node.subtitle}
                     maxLength={DIAGRAM_LIMITS.nodeSubtitle}
-                    placeholder={diagramKindLabel[node.kind]}
+                    placeholder={component.name}
                     onChange={(e) => patch({ subtitle: e.target.value })}
                 />
             </FormItem>
@@ -159,9 +170,13 @@ function NodeInspector({ node, view, onViewChange, onRemove }: NodeInspectorProp
                 <Select
                     inputId={`${id}-kind`}
                     size="sm"
-                    options={KIND_OPTIONS}
-                    value={KIND_OPTIONS.find((o) => o.value === node.kind)}
-                    onChange={(option) => option && patch({ kind: option.value })}
+                    options={kindOptions}
+                    value={kindValue}
+                    onChange={(option) =>
+                        option &&
+                        // A component still named after its type follows the new type's name
+                        patch({ kind: option.value, ...(node.label === component.name ? { label: option.label } : {}) })
+                    }
                     isSearchable={false}
                 />
             </FormItem>

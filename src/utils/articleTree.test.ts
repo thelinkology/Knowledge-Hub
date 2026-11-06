@@ -12,6 +12,7 @@ import {
     moveDown,
     moveUp,
     outdent,
+    outlineNumbers,
     subtreeHeight,
     toArrangement,
     validateArrangement,
@@ -87,6 +88,20 @@ describe('buildTree / flattenTree', () => {
     it('handles an empty list', () => {
         expect(buildTree([])).toEqual([])
         expect(flattenTree([])).toEqual([])
+    })
+
+    it('numbers the outline per level (1, 1.1, 1.1.1, 1.2, 2…), following moves', () => {
+        expect(Object.fromEntries(outlineNumbers(buildTree(ITEMS)))).toEqual({
+            a: '1',
+            a1: '1.1',
+            a1x: '1.1.1',
+            a2: '1.2',
+            b: '2',
+            c: '3',
+        })
+        // b becomes a sub-article of a: c is now 2
+        const numbers = outlineNumbers(buildTree(applyArrangement(ITEMS, indent(ITEMS, 'b') as Placement[])))
+        expect([numbers.get('b'), numbers.get('c')]).toEqual(['1.3', '2'])
     })
 })
 

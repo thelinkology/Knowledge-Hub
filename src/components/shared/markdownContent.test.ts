@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import MarkdownContent from './MarkdownContent'
+import { getOutline } from '@/utils/articleValidation'
 
 const render = (markdown: string, props: Record<string, unknown> = {}) =>
     renderToStaticMarkup(createElement(MarkdownContent, props as { children: string }, markdown))
@@ -49,6 +50,13 @@ describe('Markdown rendering', () => {
         expect(html).toContain('<h2 id="set-up-the-gateway">')
         expect(html).toContain('<h2 id="set-up-the-gateway-1">')
         expect(render('## Plain')).toContain('<h2>Plain</h2>')
+    })
+
+    it('gives headings the ids “In this article” links to, formatting included', () => {
+        const markdown = '## **Key** capabilities\n\n### Use `write-back`\n\n## [See](https://x.example) also'
+        const html = render(markdown, { headingIds: true })
+        for (const { id } of getOutline(markdown)) expect(html).toContain(`id="${id}"`)
+        expect(getOutline(markdown).map((h) => h.id)).toEqual(['key-capabilities', 'use-write-back', 'see-also'])
     })
 
     it('opens links to this app in the same tab and external links in a new one', () => {

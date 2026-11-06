@@ -4,9 +4,9 @@ import remarkGfm from 'remark-gfm'
 import type { Element, ElementContent } from 'hast'
 import VideoEmbed from './markdown/VideoEmbed'
 import remarkCallouts from './markdown/remarkCallouts'
+import rehypeHeadingIds from './markdown/rehypeHeadingIds'
 import { BestPracticeIcon, InfoIcon, WarningIcon } from '@/configs/icons.config'
 import { CALLOUT_TYPES, calloutLabel, parseVideoUrl, type CalloutType } from '@/utils/media'
-import { headingId } from '@/utils/articleValidation'
 import classNames from '@/utils/classNames'
 
 interface MarkdownContentProps {
@@ -19,6 +19,7 @@ interface MarkdownContentProps {
 }
 
 const REMARK_PLUGINS = [remarkGfm, remarkCallouts]
+const HEADING_ID_PLUGINS = [rehypeHeadingIds]
 
 /** The paragraph's only element, ignoring whitespace (an image or link on a line of its own) */
 function soleElement(node: Element | undefined): Element | null {
@@ -49,18 +50,7 @@ export default function MarkdownContent({
     internalLinks = true,
     headingIds,
 }: MarkdownContentProps) {
-    const seen = new Map<string, number>()
-    const withId = (Tag: 'h2' | 'h3') =>
-        function Heading({ children: content, node }: { children?: React.ReactNode; node?: Element }) {
-            if (!headingIds || !node) return <Tag>{content}</Tag>
-            const base = headingId(node.children.map(textOf).join(''))
-            const n = seen.get(base) ?? 0
-            seen.set(base, n + 1)
-            return <Tag id={n ? `${base}-${n}` : base}>{content}</Tag>
-        }
     const components: Components = {
-        h2: withId('h2'),
-        h3: withId('h3'),
         p: ({ node, children: content }) => {
             const only = soleElement(node)
             if (only?.tagName === 'img') {
@@ -136,7 +126,11 @@ export default function MarkdownContent({
                 className,
             )}
         >
-            <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={components}>
+            <ReactMarkdown
+                remarkPlugins={REMARK_PLUGINS}
+                rehypePlugins={headingIds ? HEADING_ID_PLUGINS : undefined}
+                components={components}
+            >
                 {children}
             </ReactMarkdown>
         </div>

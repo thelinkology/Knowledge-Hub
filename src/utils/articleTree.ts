@@ -101,6 +101,19 @@ export function flattenTree<T extends TreeItem>(tree: TreeNode<T>[]): FlatTreeEn
     return out
 }
 
+/** Outline numbers (“1”, “1.1”, “1.2.1”, “2”…): each item's position among its siblings, below its parent's */
+export function outlineNumbers<T extends TreeItem>(tree: TreeNode<T>[]): Map<string, string> {
+    const numbers = new Map<string, string>()
+    const walk = (nodes: TreeNode<T>[], prefix: string) =>
+        nodes.forEach((node, index) => {
+            const number = `${prefix}${index + 1}`
+            numbers.set(node.item.id, number)
+            walk(node.children, `${number}.`)
+        })
+    walk(tree, '')
+    return numbers
+}
+
 /** The item's ancestors, top level first (empty for a top-level or unknown item) */
 export function ancestorsOf<T extends TreeLink>(items: T[], id: string): T[] {
     const parents = effectiveParents(items)

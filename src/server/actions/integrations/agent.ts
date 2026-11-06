@@ -8,6 +8,7 @@ import { getArticlePath, getAssetPath } from '@/configs/app.config'
 import { absolutizeMarkdownLinks } from '@/utils/apiKeys'
 import { isUuid } from '@/utils/ids'
 import { diagramToMarkdown } from '@/utils/diagram'
+import { getDiagramComponents } from '@/server/actions/diagramComponents'
 import { parseDiagram } from '@/@types/library/Diagram'
 import type {
     AgentArticle,
@@ -192,7 +193,12 @@ export async function agentGetAsset(agent: AgentContext, assetId: string, origin
         'load the asset',
     )
     if (!row || !inScope(agent, row.client_id)) throw assetNotFound()
-    const [clients, products] = await Promise.all([clientRefs([row.client_id]), productRefs()])
+    const diagram = parseDiagram(row.diagram)
+    const [clients, products, components] = await Promise.all([
+        clientRefs([row.client_id]),
+        productRefs(),
+        diagram.views.length ? getDiagramComponents() : [],
+    ])
     return {
         id: row.id,
         title: row.title,
@@ -207,7 +213,7 @@ export async function agentGetAsset(agent: AgentContext, assetId: string, origin
         code: row.code,
         codeLanguage: row.code_language,
         link: row.url,
-        diagramMarkdown: absolutizeMarkdownLinks(diagramToMarkdown(parseDiagram(row.diagram), row.title), origin),
+        diagramMarkdown: absolutizeMarkdownLinks(diagramToMarkdown(diagram, row.title, components), origin),
     }
 }
 

@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import AssetEditorSWRProvider from '@/components/library/editor/AssetEditorSWRProvider'
 import AssetEditorClientPage from '@/components/library/editor/AssetEditorClientPage'
 import { getAssetEditor } from '@/server/actions/library'
+import { getDiagramComponents } from '@/server/actions/diagramComponents'
 import { requirePagePermission } from '@/server/actions/auth'
 import { isNotFound } from '@/server/utils/errors'
 import { isUuid } from '@/utils/ids'
@@ -18,16 +19,18 @@ export default async function AssetEditPage({ params }: AssetEditPageProps) {
     const { assetId } = await params
     if (!isUuid(assetId)) notFound()
 
-    let editor
+    let loaded
     try {
-        editor = await getAssetEditor(assetId)
+        loaded = await Promise.all([getAssetEditor(assetId), getDiagramComponents()])
     } catch (error) {
         if (isNotFound(error)) notFound()
         throw error
     }
 
+    const [editor, diagramComponents] = loaded
+
     return (
-        <AssetEditorSWRProvider assetId={assetId} editor={editor}>
+        <AssetEditorSWRProvider assetId={assetId} editor={editor} diagramComponents={diagramComponents}>
             <AssetEditorClientPage assetId={assetId} />
         </AssetEditorSWRProvider>
     )

@@ -3,6 +3,7 @@ import api from '@/services/api'
 import { tryParseDate } from '@/utils/parse'
 import type { Asset, AssetsQuery, AssetSummary, NewAssetInput, SaveAssetInput } from '@/@types/library/Asset'
 import type { AssetEditorData } from '@/@types/library/AssetEditor'
+import type { DiagramComponent, DiagramComponentInput } from '@/@types/library/DiagramComponent'
 
 // ── Date revivers (JSON has strings) ──
 
@@ -63,3 +64,22 @@ export const apiSaveAsset = async (assetId: string, input: SaveAssetInput) =>
     ensureEditor(await api.fetchJson<AssetEditorData>({ method: 'put', url: getAssetUrl(assetId), data: input }))
 
 export const apiDeleteAsset = (assetId: string) => api.fetchJson<void>({ method: 'delete', url: getAssetUrl(assetId) })
+
+// ── Architecture diagram component types ──
+
+export const diagramComponentsUrl = '/diagram-components'
+
+export const apiGetDiagramComponents = () =>
+    api.fetchJson<DiagramComponent[]>({ method: 'get', url: diagramComponentsUrl })
+
+export const useSWRDiagramComponents = (config?: SWRConfiguration<DiagramComponent[]>) =>
+    useSWR(diagramComponentsUrl, apiGetDiagramComponents, config)
+
+export const apiCreateDiagramComponent = (input: DiagramComponentInput) =>
+    api.fetchJson<DiagramComponent>({ method: 'post', url: diagramComponentsUrl, data: input })
+
+export const apiUpdateDiagramComponent = (componentId: string, input: DiagramComponentInput) =>
+    api.fetchJson<DiagramComponent>({ method: 'put', url: `${diagramComponentsUrl}/${componentId}`, data: input })
+
+export const apiDeleteDiagramComponent = (componentId: string) =>
+    api.fetchJson<void>({ method: 'delete', url: `${diagramComponentsUrl}/${componentId}` })

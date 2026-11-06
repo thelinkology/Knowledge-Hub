@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Button from '@/components/ui/Button'
 import Drawer from '@/components/ui/Drawer'
 import MarkdownContent from '@/components/shared/MarkdownContent'
+import DocumentOutline from '@/components/shared/DocumentOutline'
 import {
     ArticleKindTag,
     AudienceTag,
@@ -212,25 +213,9 @@ export default function ArticleReader({ article, collection, products, preview }
                 </article>
             </div>
 
-            <aside className="no-print hidden xl:block" aria-label="In this article">
+            <aside className="no-print hidden xl:block">
                 {outline.length > 0 && (
-                    <div className="article-outline sticky top-20">
-                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                            In this article
-                        </div>
-                        <ul className="space-y-1 text-sm">
-                            {outline.map((heading) => (
-                                <li key={heading.id} className={heading.level === 3 ? 'pl-3' : undefined}>
-                                    <a
-                                        href={`#${heading.id}`}
-                                        className="block text-gray-600 hover:text-primary dark:text-gray-400"
-                                    >
-                                        {heading.text}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+                    <DocumentOutline outline={outline} title="In this article" className="sticky top-20" />
                 )}
             </aside>
 

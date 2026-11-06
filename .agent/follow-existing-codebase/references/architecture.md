@@ -40,6 +40,7 @@ Agent:  Copilot Studio ─► app/api/v1/* ─► agentHandler (API key, rate li
 | `20261105000200_reference_data.sql` | Products (+ milestone templates), starter intake questions, example IF/ELSE rules |
 | `20261106000100_knowledge_tree_diagrams.sql` | `articles.parent_id` (sub-articles), `products.logo_url`, `library_assets.diagram`, asset kinds without 'flow' |
 | `20261106000200_article_tree_checks_at_commit.sql` | Tree checks (same collection, no cycle, ≤ 5 levels) run as a deferred constraint trigger; no collection ⇒ no parent |
+| `20261106000300_diagram_components.sql` | `diagram_components` (architecture diagram component types), seeded with the 12 built-in types |
 
 | Table | Notes |
 |---|---|
@@ -49,7 +50,8 @@ Agent:  Copilot Studio ─► app/api/v1/* ─► agentHandler (API key, rate li
 | `collections` | ordered groups of articles; `client_id` null = shared |
 | `articles` | `parent_id` (sub-articles within the collection, ordered by `position`), kind, audience (internal/customer), Markdown body, tags, status, `version`, generated `search` tsvector |
 | `article_revisions` | snapshot per saved version (written by `save_article`) |
-| `library_assets` | kind, `diagram` jsonb (reference architectures: views of nodes, edges, notes — @types/library/Diagram.ts), Markdown body, `url` (https), `code` + language, status, `search` tsvector |
+| `library_assets` | kind, `diagram` jsonb (reference architectures: views of nodes, edges, notes — @types/library/Diagram.ts; a node's `kind` = a `diagram_components` code), Markdown body, `url` (https), `code` + language, status, `search` tsvector |
+| `diagram_components` | code (fixed), name, description, colour key, icon key, `image_url`, position; read by any signed-in user, written by the server only. Deleting a type leaves diagrams untouched: its nodes show a generic “Component” look |
 | `knowledge_media` | uploaded images (private bucket, served by `/api/media/[id]`) |
 | `intake_questions` | key, section, type, options, required, product scope, position, active |
 | `intake_rules` | kind gotcha/best_practice, match all/any, conditions jsonb, guidance, show_to_customer, linked article/asset ids |
@@ -79,6 +81,7 @@ revisions, rules, intakes, BRDs; admins read the audit log. No browser-role writ
 | `actions/clients` | `getClients`, `getClientOptions`, `getClient(id, viewer)`, `createClient`, `updateClient`, `deleteClient`, `assertClientExists` |
 | `actions/knowledge` | collections CRUD + `arrangeCollection` (sub-article tree); `getArticles`, `getArticleView`, `getArticleEditor`, `createArticle`, `saveArticle`, `setArticleStatus`, `deleteArticle`, revisions + restore; `searchKnowledge` |
 | `actions/library` | `getAssets`, `getAsset`, `getAssetEditor`, `createAsset`, `saveAsset`, `deleteAsset` |
+| `actions/diagramComponents` | `getDiagramComponents` (cached), `createDiagramComponent`, `updateDiagramComponent`, `deleteDiagramComponent` (knowledge.manage, audited) |
 | `actions/intake` | questions + rules admin CRUD (with key/usage safeguards), `getIntakes`, `getIntakeEditor`, `createIntake`, `saveIntake`, `deleteIntake` |
 | `actions/brds` | `getBrds`, `getBrd`, `generateBrds` (draft overwrite, finals kept), `saveBrd`, `deleteBrd` |
 | `actions/integrations` | `createApiKey`, `listApiKeys`, `revokeApiKey`; `agent.ts`: `agentSearch`, `agentGetArticle`, `agentGetAsset`, `agentListClients` |
@@ -97,10 +100,9 @@ revisions, rules, intakes, BRDs; admins read the audit log. No browser-role writ
 |---|---|
 | `lessonDoc.ts` | TipTap document ⇄ Markdown for every editor feature (round-trip tested) |
 | `markdownEditing.ts`, `media.ts` | Markdown toolbar edits; videos (YouTube/Vimeo), images, callouts, reading stats |
-| `articleValidation.ts` | `getPublishIssues`, `getOutline`, `headingId` |
-| `articleTree.ts` | Sub-article tree: `buildTree`, `flattenTree`, `ancestorsOf`, `filterTree`, moves (`moveUp`/`moveDown`/`indent`/`outdent`), `validateArrangement` |
-| `articleTree.ts` | `buildTree`, `flattenTree`, `ancestorsOf`, `filterTree`, move up/down/indent/outdent, `validateArrangement` |
-| `diagram.ts` | build sequence, diagram editing helpers, `diagramToMarkdown` (Download brief + agent API), GL planning starter template |
+| `articleValidation.ts` | `getPublishIssues`, `getOutline` (“In this article”: Heading/Subheading = ##/###), `headingId` (same ids as `shared/markdown/rehypeHeadingIds`) |
+| `articleTree.ts` | Sub-article tree: `buildTree`, `flattenTree`, `outlineNumbers` (1, 1.1, 1.2…), `ancestorsOf`, `filterTree`, moves (`moveUp`/`moveDown`/`indent`/`outdent`), `validateArrangement` |
+| `diagram.ts` | build sequence, diagram editing helpers, `componentResolver`, `diagramToMarkdown` (Download brief + agent API), export helpers (`pdfText`, `exportImageSize`, `markdownToPlainText`), GL planning starter template |
 | `intakeRules.ts` | `evaluateRules`, `evaluateCondition`, `visibleQuestions`, `groupBySection`, `missingRequired`, `formatAnswer` |
 | `intakeRuleEditing.ts` | operators per question type, readable "IF … THEN" text, answer clean-up |
 | `brd.ts` | `buildBrd(input, audience)`, `buildMilestones`, `composeBrdMarkdown` (customer BRD never contains gotchas, internal articles or notes) |
@@ -113,15 +115,15 @@ revisions, rules, intakes, BRDs; admins read the audit log. No browser-role writ
 
 | Services (`services/`) | Stores (`stores/`) |
 |---|---|
-| `knowledge` (articles, collections, revisions, search), `library`, `clients` (+ products, people), `intake`, `brds`, `integrations`, `home`, `media` (`uploadImage`), `users`, `misc` (auth) | `AppStores` (products, article editor/view, collection, clients, home), `LibraryStores`, `IntakeStores`, `BrdStores`, `SettingsStores` (products admin, API keys), `AdminStores` (users, audit), `RecentItemsStore` |
+| `knowledge` (articles, collections, revisions, search), `library`, `clients` (+ products, people), `intake`, `brds`, `integrations`, `home`, `media` (`uploadImage`), `users`, `misc` (auth) | `AppStores` (products, article editor/view, collection, clients, home), `LibraryStores` (+ `useDiagramComponentsStore`), `IntakeStores`, `BrdStores`, `SettingsStores` (products admin, API keys), `AdminStores` (users, audit), `NavSectionsStore` (collapsed side-nav sections), `KnowledgeTocStore` |
 
 | Components | Contents |
 |---|---|
 | `ui/` | Ecme primitives |
-| `shared/` | `editor/MarkdownBodyEditor` (+ visual TipTap editor, Markdown toolbar, image/video dialogs), `MarkdownContent`, `PublishChecklist`, `KnowledgeTags`, `MilestonesEditor`, `PageHeader`, `EmptyState`, `ErrorState`, `Loading`, `ConfirmDialog`, `StatTile` |
-| `template/` | App shell: side nav, header search (→ `/knowledge?q=`), user menu, theme toggle, recent items |
-| `knowledge/` | `browse/` (search, filters, collections, new article/collection), `collection/`, `reader/` (ArticleReader + ArticleToc: Learn-style tree with filter, In this section, outline), `editor/` |
-| `library/` | browse, reader (code snippet with copy, AssetDiagram), editor (+ `editor/diagram/`: palette, inspector, notes), `diagram/` (React Flow canvas, loaded client-only) |
+| `shared/` | `editor/MarkdownBodyEditor` (+ visual TipTap editor, Markdown toolbar, image/video dialogs), `MarkdownContent` (+ `markdown/` remark/rehype plugins), `DocumentOutline` (“In this article”), `ProductLogo`, `PublishChecklist`, `KnowledgeTags`, `MilestonesEditor`, `PageHeader`, `EmptyState`, `ErrorState`, `Loading`, `ConfirmDialog`, `StatTile` |
+| `template/` | App shell: side nav (collapsible sections), header search (→ `/knowledge?q=`), user menu, theme toggle |
+| `knowledge/` | `browse/` (search, filters, product cards with images, collections, new article/collection), `collection/` (CollectionTree: outline-numbered, collapsed until opened), `reader/` (ArticleReader + ArticleToc: Learn-style tree with filter, In this section, outline), `editor/` |
+| `library/` | browse, reader (code snippet with copy, AssetDiagram), editor (+ `editor/diagram/`: palette, inspector, notes, `DiagramComponentsDialog`), `diagram/` (React Flow canvas, loaded client-only; `DiagramDownloadMenu` + `downloadDiagram`: PNG / JPG / PDF via html-to-image and jsPDF, loaded on demand) |
 | `clients/` | list, detail (overview/edit/delete), `tabs/` (knowledge, library, intakes, BRDs) |
 | `intakes/` | list, new intake, `editor/` (questions by section, live guidance panel, generate BRDs) |
 | `brds/` | list, document view (print/download/copy), editor (body + milestones, regenerate) |
@@ -144,7 +146,7 @@ assets/styles/
 ├── tailwind/       _tokens.css (colour variables, light + .dark), _base.css
 ├── components/     Ecme primitive styles (don't fork; extend via tokens)
 ├── template/       Ecme shell styles
-├── knowledge/      _diagram.css (component-kind colours, canvas), _content.css (reader + editor: figures, callouts, video facade, editor tables),
+├── knowledge/      _diagram.css (component colours `.diagram-color-*`, canvas, export overrides), _content.css (reader + editor: figures, callouts, video facade, editor tables),
 │                   _products.css (product themes, print rules)
 ├── vendors/        simplebar
 └── others/         _animations.css (reduced-motion aware)

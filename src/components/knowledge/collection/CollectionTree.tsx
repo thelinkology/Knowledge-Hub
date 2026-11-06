@@ -9,11 +9,11 @@ import { getArticlePath } from '@/configs/app.config'
 import {
     MAX_ARTICLE_DEPTH,
     buildTree,
-    flattenTree,
     indent,
     moveDown,
     moveUp,
     outdent,
+    outlineNumbers,
     type Placement,
     type TreeNode,
 } from '@/utils/articleTree'
@@ -45,8 +45,8 @@ const heightOf = (node: TreeNode<ArticleSummary>): number =>
     node.children.length ? 1 + Math.max(...node.children.map(heightOf)) : 0
 
 /**
- * The collection's table of contents: articles in reading order (numbered), sub-articles nested and
- * collapsible. Editors move articles up/down among their siblings, indent them under the previous
+ * The collection's table of contents: articles in reading order, numbered like an outline (1, 1.1, 1.2,
+ * 2…), sub-articles in a panel under their parent, collapsed until opened. Editors move articles up/down among their siblings, indent them under the previous
  * sibling or outdent them a level, and add sub-articles. Every button is keyboard accessible and focus
  * follows the moved article.
  */
@@ -59,9 +59,10 @@ export default function CollectionTree({
     onAddChild,
 }: CollectionTreeProps) {
     const baseId = useId()
-    const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
+    /** Articles whose sub-articles are shown (everything starts collapsed) */
+    const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
     const tree = useMemo(() => buildTree(articles), [articles])
-    const numbers = useMemo(() => new Map(flattenTree(tree).map((entry, index) => [entry.item.id, index + 1])), [tree])
+    const numbers = useMemo(() => outlineNumbers(tree), [tree])
     const parents = useMemo(
         () =>
             tree.flatMap(function collect(node): string[] {
@@ -73,7 +74,7 @@ export default function CollectionTree({
     const elementId = (articleId: string, part: string) => `${baseId}-${articleId}-${part}`
 
     const toggle = (articleId: string) =>
-        setCollapsed((current) => {
+        setExpanded((current) => {
             const next = new Set(current)
             if (next.has(articleId)) next.delete(articleId)
             else next.add(articleId)
@@ -98,11 +99,7 @@ export default function CollectionTree({
         // A new parent must be open to show where the article went
         if (action === 'indent' && siblings[index - 1]) {
             const newParent = siblings[index - 1].item.id
-            setCollapsed((current) => {
-                const next = new Set(current)
-                next.delete(newParent)
-                return next
-            })
+            setExpanded((current) => new Set(current).add(newParent))
         }
         onArrange(arrangement, message)
         // Keep keyboard focus on the moved article (it may have been re-rendered elsewhere)
@@ -117,11 +114,13 @@ export default function CollectionTree({
     const renderNodes = (nodes: TreeNode<ArticleSummary>[]) =>
         nodes.map((node, index) => {
             const { item: article, children, depth } = node
-            const number = numbers.get(article.id) ?? 0
-            const open = !collapsed.has(article.id)
+            const number = numbers.get(article.id) ?? ''
+            const open = expanded.has(article.id)
             const groupId = elementId(article.id, 'group')
             const previous = nodes[index - 1]
             const canIndent = !!previous && previous.depth + 1 + heightOf(node) <= MAX_ARTICLE_DEPTH
+            const top = depth === 0
+            const published = article.status === 'published'
             const actionButton = (action: TreeAction, label: string, icon: ReactNode, enabled: boolean) => (
                 <Button
                     id={elementId(article.id, action)}
@@ -138,8 +137,8 @@ export default function CollectionTree({
                 <li key={article.id}>
                     <div
                         className={classNames(
-                            'flex gap-3 p-4 sm:gap-4 sm:p-5',
-                            number > 1 && 'border-t border-gray-200 dark:border-gray-700',
+                            'flex items-start',
+                            top ? 'gap-3 p-4 sm:gap-4 sm:p-5' : 'gap-3 px-3 py-3',
                         )}
                     >
                         {children.length > 0 ? (
@@ -148,7 +147,10 @@ export default function CollectionTree({
                                 aria-expanded={open}
                                 aria-controls={groupId}
                                 onClick={() => toggle(article.id)}
-                                className="mt-1.5 -mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                                className={classNames(
+                                    '-mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-200/70 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100',
+                                    top ? 'mt-1.5' : 'mt-0.5',
+                                )}
                             >
                                 <NextIcon
                                     aria-hidden
@@ -166,10 +168,14 @@ export default function CollectionTree({
                         <span
                             aria-hidden
                             className={classNames(
-                                'flex shrink-0 items-center justify-center rounded-full border-2 font-bold tabular-nums',
-                                depth === 0 ? 'h-9 w-9 text-sm' : 'mt-0.5 h-7 w-7 text-xs',
-                                article.status === 'published'
-                                    ? 'border-primary text-primary'
+                                'flex shrink-0 items-center justify-center font-bold tabular-nums',
+                                top
+                                    ? 'h-9 w-9 rounded-full border-2 text-sm'
+                                    : 'mt-0.5 h-6 min-w-9 rounded-md border px-1.5 text-xs',
+                                published
+                                    ? top
+                                        ? 'border-primary text-primary'
+                                        : 'border-primary/40 bg-white text-primary dark:bg-gray-900'
                                     : 'border-dashed border-gray-300 text-gray-500 dark:border-gray-600',
                             )}
                         >
@@ -180,23 +186,39 @@ export default function CollectionTree({
                                 <Link
                                     id={elementId(article.id, 'link')}
                                     href={getArticlePath(article.id)}
-                                    className="font-semibold break-words text-gray-900 hover:text-primary hover:underline dark:text-gray-100"
+                                    className={classNames(
+                                        'font-semibold break-words text-gray-900 hover:text-primary hover:underline dark:text-gray-100',
+                                        !top && 'text-sm',
+                                    )}
                                 >
                                     <span className="sr-only">{number}. </span>
                                     {article.title}
                                 </Link>
-                                {article.status !== 'published' && <PublishStatusTag status={article.status} />}
+                                {!published && <PublishStatusTag status={article.status} />}
                             </div>
                             {article.summary && (
-                                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{article.summary}</p>
+                                <p
+                                    className={classNames(
+                                        'mt-1 text-sm text-gray-600 dark:text-gray-400',
+                                        top ? 'line-clamp-3' : 'line-clamp-2',
+                                    )}
+                                >
+                                    {article.summary}
+                                </p>
                             )}
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <ArticleKindTag kind={article.kind} />
-                                <ProductTag productId={article.productId} products={products} />
-                                {children.length > 0 && !open && (
-                                    <span className="text-xs text-gray-500">
+                            <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
+                                {top && <ArticleKindTag kind={article.kind} />}
+                                {top && <ProductTag productId={article.productId} products={products} />}
+                                {children.length > 0 && (
+                                    <button
+                                        type="button"
+                                        tabIndex={-1}
+                                        aria-hidden
+                                        onClick={() => toggle(article.id)}
+                                        className="text-xs font-semibold text-gray-500 hover:text-primary"
+                                    >
                                         {children.length === 1 ? '1 sub-article' : `${children.length} sub-articles`}
-                                    </span>
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -231,7 +253,12 @@ export default function CollectionTree({
                             id={groupId}
                             hidden={!open}
                             aria-label={`Sub-articles of “${article.title}”`}
-                            className="ml-6 border-l border-gray-200 sm:ml-10 dark:border-gray-700"
+                            className={classNames(
+                                'divide-y divide-gray-200 dark:divide-gray-700',
+                                top
+                                    ? 'mx-4 mb-4 rounded-xl border border-gray-200 bg-gray-50 sm:mr-5 sm:ml-[5.5rem] dark:border-gray-700 dark:bg-gray-800/40'
+                                    : 'ml-9 border-t border-l border-gray-200 dark:border-gray-700',
+                            )}
                         >
                             {renderNodes(children)}
                         </ol>
@@ -244,15 +271,19 @@ export default function CollectionTree({
         <>
             {parents.length > 0 && (
                 <div className="no-print flex flex-wrap justify-end gap-1 border-b border-gray-200 px-4 py-2 dark:border-gray-700">
-                    <Button size="xs" variant="plain" onClick={() => setCollapsed(new Set())}>
+                    <Button size="xs" variant="plain" onClick={() => setExpanded(new Set(parents))}>
                         Expand all
                     </Button>
-                    <Button size="xs" variant="plain" onClick={() => setCollapsed(new Set(parents))}>
+                    <Button size="xs" variant="plain" onClick={() => setExpanded(new Set())}>
                         Collapse all
                     </Button>
                 </div>
             )}
-            <ol aria-label="Articles in reading order" aria-busy={busy}>
+            <ol
+                aria-label="Articles in reading order"
+                aria-busy={busy}
+                className="divide-y divide-gray-200 dark:divide-gray-700"
+            >
                 {renderNodes(tree)}
             </ol>
         </>

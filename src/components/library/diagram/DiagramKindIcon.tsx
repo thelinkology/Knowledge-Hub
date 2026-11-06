@@ -1,17 +1,34 @@
 import { diagramIcon } from '@/configs/icons.config'
-import { diagramKindIcon, type DiagramNodeKind } from '@/@types/library/Diagram'
 import classNames from '@/utils/classNames'
+import type { DiagramComponent } from '@/@types/library/DiagramComponent'
 
 interface DiagramKindIconProps {
-    kind: DiagramNodeKind
+    component: Pick<DiagramComponent, 'color' | 'icon' | 'imageUrl'>
     className?: string
 }
 
-/** A component kind's icon on its legend colour (decorative: the kind is always named in text nearby) */
-export default function DiagramKindIcon({ kind, className }: DiagramKindIconProps) {
-    const Icon = diagramIcon[diagramKindIcon[kind]]
+/**
+ * A component type's image, or its icon on its colour (decorative: the type is always named in text
+ * nearby)
+ */
+export default function DiagramKindIcon({ component, className }: DiagramKindIconProps) {
+    if (component.imageUrl) {
+        return (
+            <span
+                className={classNames(
+                    'diagram-kind-icon diagram-kind-icon-image',
+                    `diagram-color-${component.color}`,
+                    className,
+                )}
+                aria-hidden
+            >
+                <img src={component.imageUrl} alt="" draggable={false} />
+            </span>
+        )
+    }
+    const Icon = diagramIcon[component.icon]
     return (
-        <span className={classNames('diagram-kind-icon', `diagram-kind-${kind}`, className)} aria-hidden>
+        <span className={classNames('diagram-kind-icon', `diagram-color-${component.color}`, className)} aria-hidden>
             <Icon />
         </span>
     )

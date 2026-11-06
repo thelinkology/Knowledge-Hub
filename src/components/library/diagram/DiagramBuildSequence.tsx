@@ -1,6 +1,9 @@
+'use client'
+
 import MarkdownContent from '@/components/shared/MarkdownContent'
 import { buildSequence } from '@/utils/diagram'
-import { diagramKindLabel, type DiagramView } from '@/@types/library/Diagram'
+import useDiagramComponents from '@/utils/hooks/useDiagramComponents'
+import type { DiagramView } from '@/@types/library/Diagram'
 import classNames from '@/utils/classNames'
 
 interface DiagramBuildSequenceProps {
@@ -19,6 +22,7 @@ export default function DiagramBuildSequence({
     internalLinks = true,
     className,
 }: DiagramBuildSequenceProps) {
+    const { resolve } = useDiagramComponents()
     const sequence = buildSequence(view)
     if (!sequence.length) return null
     return (
@@ -26,7 +30,7 @@ export default function DiagramBuildSequence({
             <Heading className="mb-3 text-base font-semibold">Build sequence</Heading>
             <ol className="space-y-4">
                 {sequence.map((node) => (
-                    <li key={node.id} className={classNames('flex gap-3', `diagram-kind-${node.kind}`)}>
+                    <li key={node.id} className={classNames('flex gap-3', `diagram-color-${resolve(node.kind).color}`)}>
                         <span className="diagram-step mt-0.5" aria-hidden>
                             {node.step}
                         </span>
@@ -36,7 +40,7 @@ export default function DiagramBuildSequence({
                                 {node.label}
                                 <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-gray-500 dark:text-gray-400">
                                     <span className="diagram-swatch" aria-hidden />
-                                    {diagramKindLabel[node.kind]}
+                                    {resolve(node.kind).name}
                                 </span>
                             </div>
                             {node.guidance.trim() && (

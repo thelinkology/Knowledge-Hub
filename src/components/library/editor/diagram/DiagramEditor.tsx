@@ -1,7 +1,7 @@
 'use client'
 
-import { useId, useMemo, useState } from 'react'
-import { useController, useFormContext } from 'react-hook-form'
+import { useId, useMemo, useRef, useState } from 'react'
+import { useController, useFormContext, useWatch } from 'react-hook-form'
 import Alert from '@/components/ui/Alert'
 import Button from '@/components/ui/Button'
 import Dropdown from '@/components/ui/Dropdown'
@@ -9,12 +9,14 @@ import Input from '@/components/ui/Input'
 import { FormItem } from '@/components/ui/Form'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import EmptyState from '@/components/shared/EmptyState'
+import DiagramDownloadMenu from '../../diagram/DiagramDownloadMenu'
 import DiagramLegend from '../../diagram/DiagramLegend'
 import DiagramViewTabs from '../../diagram/DiagramViewTabs'
 import LazyDiagramCanvas from '../../diagram/LazyDiagramCanvas'
 import DiagramPalette from './DiagramPalette'
 import DiagramInspector from './DiagramInspector'
 import DiagramNotesEditor from './DiagramNotesEditor'
+import DiagramComponentsDialog from './DiagramComponentsDialog'
 import navigationIcon, {
     AddIcon,
     CopyIcon,
@@ -37,10 +39,11 @@ import {
     renumberSteps,
 } from '@/utils/diagram'
 import { DIAGRAM_LIMITS, DiagramSchema, type Diagram, type DiagramView } from '@/@types/library/Diagram'
+import useDiagramComponents from '@/utils/hooks/useDiagramComponents'
 import useFullScreen from '@/utils/hooks/useFullScreen'
 import classNames from '@/utils/classNames'
 import type { AssetFormData } from '@/@types/library/forms/AssetFormData'
-import type { SelectionUpdate, ViewUpdate } from '../../diagram/DiagramCanvas'
+import type { DiagramCanvasExporter, SelectionUpdate, ViewUpdate } from '../../diagram/DiagramCanvas'
 
 /** Readable problems in the diagram ("GL planning only › component 3: Give the component a name") */
 function diagramIssues(diagram: Diagram): string[] {
@@ -76,8 +79,13 @@ export default function DiagramEditor() {
     const [activeId, setActiveId] = useState(diagram.views[0]?.id ?? '')
     const [selected, setSelected] = useState<string[]>([])
     const [confirmDelete, setConfirmDelete] = useState(false)
-    const [fullScreen, setFullScreen] = useFullScreen(!confirmDelete)
+    const [managing, setManaging] = useState(false)
+    const [notesOpen, setNotesOpen] = useState(false)
+    const [fullScreen, setFullScreen] = useFullScreen(!confirmDelete && !managing)
     const issues = useMemo(() => diagramIssues(diagram), [diagram])
+    const exportRef = useRef<DiagramCanvasExporter>(null)
+    const title = useWatch({ control, name: 'title' })
+    const { components, loaded } = useDiagramComponents()
 
     const view = diagram.views.find((v) => v.id === activeId) ?? diagram.views[0]
     const viewIndex = view ? diagram.views.indexOf(view) : -1
@@ -172,14 +180,16 @@ export default function DiagramEditor() {
     return (
         <div
             className={classNames(
-                fullScreen && 'fixed inset-0 z-[35] flex flex-col overflow-y-auto bg-white p-4 sm:p-6 dark:bg-gray-900',
+                fullScreen &&
+                    'fixed inset-0 z-[35] flex flex-col overflow-y-auto bg-white p-4 sm:p-6 xl:overflow-hidden dark:bg-gray-900',
             )}
             role={fullScreen ? 'region' : undefined}
             aria-label={fullScreen ? 'Architecture diagram (full screen)' : undefined}
         >
-            {fullScreen && <h4 className="mb-3">Architecture diagram</h4>}
+            {fullScreen && <h4 className="mb-3 shrink-0">Architecture diagram</h4>}
 
             <DiagramViewTabs
+                className="shrink-0"
                 views={diagram.views}
                 activeId={view.id}
                 onSelect={selectView}
@@ -216,7 +226,7 @@ export default function DiagramEditor() {
                 aria-labelledby={`${panelId}-tab-${view.id}`}
                 className="flex min-h-0 flex-1 flex-col pt-4"
             >
-                <div className="grid gap-x-4 md:grid-cols-[minmax(0,16rem)_minmax(0,1fr)_auto] md:items-end">
+                <div className="grid shrink-0 gap-x-4 md:grid-cols-[minmax(0,16rem)_minmax(0,1fr)_auto] md:items-end">
                     <FormItem
                         label="View name"
                         htmlFor={`${fieldId}-name`}
@@ -283,8 +293,8 @@ export default function DiagramEditor() {
                     </div>
                 </div>
 
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <DiagramLegend kinds={kindsInView(view)} />
+                <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
+                    <DiagramLegend components={loaded ? kindsInView(view, components) : []} />
                     <div className="ml-auto flex flex-wrap gap-2">
                         {hasSteps && (
                             <Button
@@ -296,6 +306,12 @@ export default function DiagramEditor() {
                                 Renumber steps
                             </Button>
                         )}
+                        <DiagramDownloadMenu
+                            diagram={diagram}
+                            view={view}
+                            title={title?.trim() || 'Architecture'}
+                            exporter={exportRef}
+                        />
                         <Button
                             size="xs"
                             icon={fullScreen ? <ExitFullScreenIcon /> : <FullScreenIcon />}
@@ -306,26 +322,35 @@ export default function DiagramEditor() {
                     </div>
                 </div>
 
-                <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-                    <LazyDiagramCanvas
-                        key={`${view.id}-${fullScreen}`}
-                        view={view}
-                        selected={selected}
-                        onSelectedChange={onSelectedChange}
-                        onViewChange={(update) => updateView(view.id, update)}
-                        renderPalette={(add) => <DiagramPalette onAdd={add} />}
-                        className={fullScreen ? 'h-[calc(100vh-17rem)] min-h-[420px]' : 'h-[520px]'}
-                    />
+                <div
+                    className={classNames(
+                        'grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]',
+                        fullScreen && 'xl:min-h-0 xl:flex-1 xl:grid-rows-[minmax(0,1fr)]',
+                    )}
+                >
+                    <div className={classNames('min-w-0', fullScreen && 'h-[75vh] min-h-[420px] xl:h-auto xl:min-h-0')}>
+                        <LazyDiagramCanvas
+                            key={`${view.id}-${fullScreen}`}
+                            view={view}
+                            selected={selected}
+                            onSelectedChange={onSelectedChange}
+                            onViewChange={(update) => updateView(view.id, update)}
+                            renderPalette={(add) => <DiagramPalette onAdd={add} onManage={() => setManaging(true)} />}
+                            fill={fullScreen}
+                            exportRef={exportRef}
+                        />
+                    </div>
                     <DiagramInspector
                         view={view}
                         selected={selected}
                         onViewChange={(update) => updateView(view.id, update)}
                         onSelectedChange={onSelectedChange}
+                        className={fullScreen ? 'xl:min-h-0 xl:overflow-y-auto' : undefined}
                     />
                 </div>
 
                 {issues.length > 0 && (
-                    <Alert type="danger" showIcon className="mt-4">
+                    <Alert type="danger" showIcon className="mt-4 shrink-0">
                         <div className="font-semibold">The diagram can’t be saved yet:</div>
                         <ul className="mt-1 list-disc pl-5 text-sm">
                             {issues.map((issue) => (
@@ -335,10 +360,47 @@ export default function DiagramEditor() {
                     </Alert>
                 )}
 
-                <div className="mt-4">
-                    <DiagramNotesEditor view={view} onViewChange={(update) => updateView(view.id, update)} />
-                </div>
+                {fullScreen ? (
+                    // Full screen: the notes fold away so the canvas keeps the room
+                    <div className="mt-3 shrink-0 rounded-2xl border border-gray-200 dark:border-gray-700">
+                        <button
+                            type="button"
+                            className="flex w-full items-center justify-between gap-2 rounded-2xl px-4 py-2 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                            aria-expanded={notesOpen}
+                            aria-controls={`${panelId}-notes`}
+                            onClick={() => setNotesOpen(!notesOpen)}
+                        >
+                            <span>
+                                Notes
+                                <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">
+                                    {view.notes.length}
+                                </span>
+                            </span>
+                            <ExpandIcon
+                                aria-hidden
+                                className={classNames('transition-transform', notesOpen && 'rotate-180')}
+                            />
+                        </button>
+                        {notesOpen && (
+                            <div
+                                id={`${panelId}-notes`}
+                                className="max-h-56 overflow-y-auto border-t border-gray-200 px-4 py-3 dark:border-gray-700"
+                            >
+                                <DiagramNotesEditor
+                                    view={view}
+                                    onViewChange={(update) => updateView(view.id, update)}
+                                />
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="mt-4">
+                        <DiagramNotesEditor view={view} onViewChange={(update) => updateView(view.id, update)} />
+                    </div>
+                )}
             </div>
+
+            <DiagramComponentsDialog isOpen={managing} onClose={() => setManaging(false)} />
 
             <ConfirmDialog
                 isOpen={confirmDelete}

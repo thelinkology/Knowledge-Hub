@@ -1,19 +1,23 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import Button from '@/components/ui/Button'
 import CloseButton from '@/components/ui/CloseButton'
 import MarkdownContent from '@/components/shared/MarkdownContent'
 import DiagramBuildSequence from '../diagram/DiagramBuildSequence'
+import DiagramDownloadMenu from '../diagram/DiagramDownloadMenu'
 import DiagramKindIcon from '../diagram/DiagramKindIcon'
 import DiagramLegend from '../diagram/DiagramLegend'
 import DiagramNotes from '../diagram/DiagramNotes'
 import DiagramViewTabs from '../diagram/DiagramViewTabs'
 import LazyDiagramCanvas from '../diagram/LazyDiagramCanvas'
-import { DownloadIcon, ExitFullScreenIcon, FullScreenIcon } from '@/configs/icons.config'
-import { diagramFileName, diagramToMarkdown, kindsInView } from '@/utils/diagram'
-import { diagramKindLabel, type Diagram, type DiagramNode } from '@/@types/library/Diagram'
+import { ExitFullScreenIcon, FullScreenIcon } from '@/configs/icons.config'
+import { kindsInView } from '@/utils/diagram'
+import useDiagramComponents from '@/utils/hooks/useDiagramComponents'
 import useFullScreen from '@/utils/hooks/useFullScreen'
+import type { Diagram, DiagramNode } from '@/@types/library/Diagram'
+import type { DiagramComponent } from '@/@types/library/DiagramComponent'
+import type { DiagramCanvasExporter } from '../diagram/DiagramCanvas'
 import classNames from '@/utils/classNames'
 
 interface AssetDiagramProps {
@@ -35,6 +39,8 @@ export default function AssetDiagram({ diagram, title, preview }: AssetDiagramPr
     const [activeId, setActiveId] = useState(diagram.views[0]?.id ?? '')
     const [selected, setSelected] = useState<string[]>([])
     const [fullScreen, setFullScreen] = useFullScreen()
+    const exportRef = useRef<DiagramCanvasExporter>(null)
+    const { components, resolve, loaded } = useDiagramComponents()
 
     const view = diagram.views.find((v) => v.id === activeId) ?? diagram.views[0]
     if (!view) return null
@@ -45,19 +51,8 @@ export default function AssetDiagram({ diagram, title, preview }: AssetDiagramPr
         setSelected([])
     }
 
-    const download = () => {
-        const blob = new Blob([diagramToMarkdown(diagram, title)], { type: 'text/markdown;charset=utf-8' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = diagramFileName(title)
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        URL.revokeObjectURL(url)
-    }
-
-    const kinds = kindsInView(view)
+    const legend = loaded ? kindsInView(view, components) : []
+    const download = <DiagramDownloadMenu diagram={diagram} view={view} title={title} exporter={exportRef} />
 
     return (
         <section className="mt-8" aria-labelledby={headingId}>
@@ -66,9 +61,7 @@ export default function AssetDiagram({ diagram, title, preview }: AssetDiagramPr
                     Architecture diagram
                 </h2>
                 <div className="no-print flex flex-wrap gap-2">
-                    <Button size="xs" icon={<DownloadIcon />} onClick={download}>
-                        Download brief
-                    </Button>
+                    {!fullScreen && download}
                     <Button size="xs" icon={<FullScreenIcon />} onClick={() => setFullScreen(true)}>
                         Full screen
                     </Button>
@@ -79,21 +72,30 @@ export default function AssetDiagram({ diagram, title, preview }: AssetDiagramPr
                 className={classNames(
                     'print:hidden',
                     fullScreen &&
-                        'fixed inset-0 z-[35] flex flex-col overflow-y-auto bg-white p-4 sm:p-6 dark:bg-gray-900',
+                        'fixed inset-0 z-[35] flex flex-col overflow-hidden bg-white p-4 sm:p-6 dark:bg-gray-900',
                 )}
                 role={fullScreen ? 'dialog' : undefined}
                 aria-modal={fullScreen || undefined}
                 aria-label={fullScreen ? `${title} — architecture diagram (full screen)` : undefined}
             >
                 {fullScreen && (
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                        <h3 className="truncate text-lg">{title}</h3>
-                        <Button size="xs" icon={<ExitFullScreenIcon />} onClick={() => setFullScreen(false)}>
-                            Exit full screen
-                        </Button>
+                    <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
+                        <h3 className="min-w-0 truncate text-lg">{title}</h3>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                            {download}
+                            <Button size="xs" icon={<ExitFullScreenIcon />} onClick={() => setFullScreen(false)}>
+                                Exit full screen
+                            </Button>
+                        </div>
                     </div>
                 )}
-                <DiagramViewTabs views={diagram.views} activeId={view.id} onSelect={selectView} panelId={panelId} />
+                <DiagramViewTabs
+                    views={diagram.views}
+                    activeId={view.id}
+                    onSelect={selectView}
+                    panelId={panelId}
+                    className="shrink-0"
+                />
                 <div
                     id={panelId}
                     role="tabpanel"
@@ -101,10 +103,10 @@ export default function AssetDiagram({ diagram, title, preview }: AssetDiagramPr
                     className="flex min-h-0 flex-1 flex-col pt-3"
                 >
                     {view.description.trim() && (
-                        <p className="mb-2 text-gray-700 dark:text-gray-300">{view.description}</p>
+                        <p className="mb-2 shrink-0 text-gray-700 dark:text-gray-300">{view.description}</p>
                     )}
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <DiagramLegend kinds={kinds} />
+                    <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
+                        <DiagramLegend components={legend} />
                         {view.nodes.length > 0 && (
                             <span className="text-xs text-gray-500 dark:text-gray-400">
                                 Select any component for build guidance
@@ -112,23 +114,30 @@ export default function AssetDiagram({ diagram, title, preview }: AssetDiagramPr
                         )}
                     </div>
                     {view.nodes.length ? (
-                        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
-                            <div className={classNames('min-w-0', !node && 'lg:col-span-2')}>
+                        <div
+                            className={classNames(
+                                'grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px]',
+                                fullScreen && 'min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] lg:grid-rows-1',
+                            )}
+                        >
+                            <div className={classNames('min-w-0', fullScreen && 'min-h-0', !node && 'lg:col-span-2')}>
                                 <LazyDiagramCanvas
                                     key={`${view.id}-${fullScreen}`}
                                     view={view}
                                     readOnly
                                     selected={selected}
                                     onSelectedChange={setSelected}
-                                    className={fullScreen ? 'h-[calc(100vh-15rem)] min-h-[360px]' : 'h-[520px]'}
+                                    fill={fullScreen}
+                                    exportRef={exportRef}
                                 />
                             </div>
                             {node && (
                                 <NodeDetails
                                     node={node}
+                                    component={resolve(node.kind)}
                                     preview={preview}
                                     onClose={() => setSelected([])}
-                                    className={fullScreen ? 'max-h-[calc(100vh-15rem)]' : 'max-h-[520px]'}
+                                    className={fullScreen ? 'max-h-[35vh] lg:max-h-none lg:min-h-0' : 'max-h-[520px]'}
                                 />
                             )}
                         </div>
@@ -137,7 +146,10 @@ export default function AssetDiagram({ diagram, title, preview }: AssetDiagramPr
                             This view has no components yet.
                         </p>
                     )}
-                    <DiagramNotes notes={view.notes} className="mt-3" />
+                    <DiagramNotes
+                        notes={view.notes}
+                        className={classNames('mt-3', fullScreen && 'max-h-36 shrink-0 overflow-y-auto')}
+                    />
                     {!fullScreen && <DiagramBuildSequence view={view} internalLinks={!preview} className="mt-6" />}
                 </div>
             </div>
@@ -159,13 +171,14 @@ export default function AssetDiagram({ diagram, title, preview }: AssetDiagramPr
 
 interface NodeDetailsProps {
     node: DiagramNode
+    component: DiagramComponent
     preview?: boolean
     onClose: () => void
     className?: string
 }
 
 /** The selected component: kind, build step and build guidance */
-function NodeDetails({ node, preview, onClose, className }: NodeDetailsProps) {
+function NodeDetails({ node, component, preview, onClose, className }: NodeDetailsProps) {
     return (
         <aside
             className={classNames(
@@ -176,10 +189,10 @@ function NodeDetails({ node, preview, onClose, className }: NodeDetailsProps) {
             aria-live="polite"
         >
             <div className="flex items-start gap-3">
-                <DiagramKindIcon kind={node.kind} className="h-9 w-9 text-xl" />
+                <DiagramKindIcon component={component} className="h-9 w-9 text-xl" />
                 <div className="min-w-0 flex-1">
                     <div className="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-                        {diagramKindLabel[node.kind]}
+                        {component.name}
                     </div>
                     <h3 className="text-base leading-snug font-semibold">{node.label}</h3>
                     {node.subtitle.trim() && (
@@ -188,7 +201,7 @@ function NodeDetails({ node, preview, onClose, className }: NodeDetailsProps) {
                 </div>
                 <CloseButton onClick={onClose} aria-label="Close build guidance" />
             </div>
-            <div className={classNames('mt-3 flex items-center gap-2 text-sm', `diagram-kind-${node.kind}`)}>
+            <div className={classNames('mt-3 flex items-center gap-2 text-sm', `diagram-color-${component.color}`)}>
                 {node.step !== null ? (
                     <>
                         <span className="diagram-step" aria-hidden>

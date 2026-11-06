@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { createKeyedResourceStore, createResourceStore, resourceSlice, type ResourceState } from './createResourceStore'
 import type { Asset, AssetKind, AssetSummary } from '@/@types/library/Asset'
 import type { AssetEditorData } from '@/@types/library/AssetEditor'
+import type { DiagramComponent } from '@/@types/library/DiagramComponent'
 import type { ClientStatus, ClientSummary } from '@/@types/clients/Client'
 import type { PersonOption } from '@/@types/users/UserAccount'
 
@@ -43,6 +44,9 @@ export const getAssetState = assetStores.getState
 const assetEditorStores = createKeyedResourceStore<AssetEditorData>()
 export const useAssetEditorStore = assetEditorStores.useKeyedStore
 export const getAssetEditorState = assetEditorStores.getState
+
+/** Architecture diagram component types (the designer's palette, colours and icons for every diagram) */
+export const useDiagramComponentsStore = createResourceStore<DiagramComponent[]>()
 
 // ── Clients ──
 

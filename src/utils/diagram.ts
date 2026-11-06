@@ -1,14 +1,12 @@
 import {
     DIAGRAM_LIMITS,
-    DIAGRAM_NODE_KINDS,
-    diagramKindLabel,
     type Diagram,
     type DiagramEdge,
     type DiagramNode,
-    type DiagramNodeKind,
     type DiagramSummary,
     type DiagramView,
 } from '@/@types/library/Diagram'
+import { unknownDiagramComponent, type DiagramComponent } from '@/@types/library/DiagramComponent'
 import { slugify } from '@/utils/slugs'
 
 /*
@@ -16,7 +14,7 @@ import { slugify } from '@/utils/slugs'
  * (no React, no React Flow).
  */
 
-/** The drag-and-drop payload type of a palette item (a component kind) */
+/** The drag-and-drop payload type of a palette item (a component type's code) */
 export const DIAGRAM_KIND_MIME = 'application/x-knowledge-hub-diagram-kind'
 
 /** Grid the designer snaps to */
@@ -34,6 +32,18 @@ export function newDiagramId(prefix: 'v' | 'n' | 'e' | 'note'): string {
     return `${prefix}-${Array.from(bytes, (b) => ID_ALPHABET[b % ID_ALPHABET.length]).join('')}`
 }
 
+// ── Component types ──
+
+/** Looks a node's type up by code; unknown codes (a deleted type) get the fallback look */
+export function componentResolver(components: readonly DiagramComponent[]): (code: string) => DiagramComponent {
+    const byCode = new Map(components.map((component) => [component.code, component]))
+    return (code) => byCode.get(code) ?? unknownDiagramComponent(code)
+}
+
+/** Component types in palette order: position, then name */
+export const sortComponents = (components: readonly DiagramComponent[]): DiagramComponent[] =>
+    [...components].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
+
 // ── Reading ──
 
 /** Components with a build step, in build order (ties keep their order in the view) */
@@ -45,9 +55,16 @@ export function buildSequence(view: DiagramView): DiagramNode[] {
         .map(({ node }) => node)
 }
 
-/** The component kinds a view uses, in legend order */
-export const kindsInView = (view: DiagramView): DiagramNodeKind[] =>
-    DIAGRAM_NODE_KINDS.filter((kind) => view.nodes.some((node) => node.kind === kind))
+/**
+ * The component types a view uses, in palette order (for the legend); nodes whose type is unknown add
+ * one fallback entry at the end.
+ */
+export function kindsInView(view: DiagramView, components: readonly DiagramComponent[]): DiagramComponent[] {
+    const used = new Set(view.nodes.map((node) => node.kind))
+    const known = sortComponents(components).filter((component) => used.has(component.code))
+    const unknown = [...used].find((code) => !known.some((component) => component.code === code))
+    return unknown === undefined ? known : [...known, unknownDiagramComponent(unknown)]
+}
 
 /** "N views · M components" for library cards; null when there's no diagram */
 export function summarizeDiagram(diagram: Diagram): DiagramSummary | null {
@@ -103,10 +120,15 @@ export function defaultPosition(view: DiagramView): { x: number; y: number } {
     return freePosition(view, { x: (n % 4) * 260, y: Math.floor(n / 4) * 140 })
 }
 
-/** A new component of a kind at a position */
-export function createNode(view: DiagramView, kind: DiagramNodeKind, position?: { x: number; y: number }): DiagramNode {
+/** A new component of a type (named after the type) at a position */
+export function createNode(
+    view: DiagramView,
+    component: Pick<DiagramComponent, 'code' | 'name'>,
+    position?: { x: number; y: number },
+): DiagramNode {
     const { x, y } = position ? freePosition(view, position) : defaultPosition(view)
-    return { id: newDiagramId('n'), kind, label: diagramKindLabel[kind], subtitle: '', x, y, step: null, guidance: '' }
+    const label = component.name.slice(0, DIAGRAM_LIMITS.nodeLabel)
+    return { id: newDiagramId('n'), kind: component.code, label, subtitle: '', x, y, step: null, guidance: '' }
 }
 
 /** Connects two components (no self-connections, no duplicates of the same direction); null if refused */
@@ -215,21 +237,26 @@ const indent = (markdown: string, spaces: number) =>
         .map((line) => (line.trim() ? `${' '.repeat(spaces)}${line}` : ''))
         .join('\n')
 
-function viewToMarkdown(view: DiagramView, level: number): string {
+function viewToMarkdown(view: DiagramView, level: number, components: readonly DiagramComponent[]): string {
     const h = (n: number) => '#'.repeat(Math.min(6, n))
     const byId = new Map(view.nodes.map((node) => [node.id, node]))
+    const known = sortComponents(components)
+    const typeName = (node: DiagramNode) =>
+        known.find((component) => component.code === node.kind)?.name ?? 'Other component'
     const parts: string[] = [`${h(level)} ${inline(view.name)}`]
     if (view.description.trim()) parts.push(view.description.trim())
 
     if (view.nodes.length) {
-        const groups = DIAGRAM_NODE_KINDS.map((kind) => {
-            const nodes = view.nodes.filter((node) => node.kind === kind)
-            if (!nodes.length) return ''
-            const items = nodes.map(
-                (node) => `- ${inline(node.label)}${node.subtitle.trim() ? ` — ${inline(node.subtitle)}` : ''}`,
-            )
-            return `**${diagramKindLabel[kind]}**\n\n${items.join('\n')}`
-        }).filter(Boolean)
+        const item = (node: DiagramNode) =>
+            `- ${inline(node.label)}${node.subtitle.trim() ? ` — ${inline(node.subtitle)}` : ''}`
+        const groups = known
+            .map((component) => {
+                const nodes = view.nodes.filter((node) => node.kind === component.code)
+                return nodes.length ? `**${inline(component.name)}**\n\n${nodes.map(item).join('\n')}` : ''
+            })
+            .filter(Boolean)
+        const others = view.nodes.filter((node) => !known.some((component) => component.code === node.kind))
+        if (others.length) groups.push(`**Other components**\n\n${others.map(item).join('\n')}`)
         parts.push(`${h(level + 1)} Components\n\n${groups.join('\n\n')}`)
     } else {
         parts.push('_No components yet._')
@@ -247,7 +274,7 @@ function viewToMarkdown(view: DiagramView, level: number): string {
     const sequence = buildSequence(view)
     if (sequence.length) {
         const steps = sequence.map((node) => {
-            const head = `${node.step}. **${inline(node.label)}** (${diagramKindLabel[node.kind]})`
+            const head = `${node.step}. **${inline(node.label)}** (${inline(typeName(node))})`
             return node.guidance.trim() ? `${head}\n\n${indent(node.guidance, 3)}` : head
         })
         parts.push(`${h(level + 1)} Build sequence\n\n${steps.join('\n\n')}`)
@@ -269,18 +296,89 @@ function viewToMarkdown(view: DiagramView, level: number): string {
 }
 
 /**
- * The diagram as a Markdown brief: per view its description, components grouped by kind, connections
- * ("A → B (label)"), the build sequence with guidance, and notes. '' when there are no views.
+ * The diagram as a Markdown brief: per view its description, components grouped by type (in palette
+ * order; nodes whose type was deleted under "Other components"), connections ("A → B (label)"), the build
+ * sequence with guidance, and notes. '' when there are no views.
  */
-export function diagramToMarkdown(diagram: Diagram, title: string): string {
+export function diagramToMarkdown(diagram: Diagram, title: string, components: readonly DiagramComponent[]): string {
     if (!diagram.views.length) return ''
     const heading = inline(title)
-    const body = diagram.views.map((view) => viewToMarkdown(view, heading ? 2 : 1)).join('\n\n')
+    const body = diagram.views.map((view) => viewToMarkdown(view, heading ? 2 : 1, components)).join('\n\n')
     return `${heading ? `# ${heading}\n\n` : ''}${body}\n`
 }
 
-/** "gl-planning-architecture.md" */
-export const diagramFileName = (title: string) => `${slugify(title) || 'diagram'}-architecture.md`
+/** "gl-planning-architecture.md"; with a view and an extension: "gl-planning-main-view.png" */
+export function diagramFileName(title: string, view?: { name: string; extension: 'png' | 'jpg' | 'pdf' }): string {
+    const base = slugify(title) || 'diagram'
+    if (!view) return `${base}-architecture.md`
+    const viewSlug = slugify(view.name).slice(0, 50).replace(/-+$/, '')
+    return `${base.slice(0, 60).replace(/-+$/, '')}${viewSlug ? `-${viewSlug}` : ''}.${view.extension}`
+}
+
+// ── Image / PDF export ──
+
+/** Characters the PDF's built-in fonts can draw besides Latin-1 (Windows-1252's extras) */
+const WIN_ANSI_EXTRAS = new Set('€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ')
+
+const PDF_REPLACEMENTS: Record<string, string> = { '→': '->', '←': '<-', '⇒': '=>', '≥': '>=', '≤': '<=', '✓': 'v' }
+
+/**
+ * Text the PDF's standard fonts can draw (Windows-1252): arrows become "->", accents outside the set are
+ * dropped ("ő" → "o"), anything else becomes "?". Tabs and line breaks are kept.
+ */
+export function pdfText(text: string): string {
+    let out = ''
+    for (const char of text) {
+        const code = char.codePointAt(0) as number
+        if (code === 9 || code === 10 || (code >= 32 && code < 127) || (code >= 160 && code <= 255)) out += char
+        else if (WIN_ANSI_EXTRAS.has(char)) out += char
+        else if (PDF_REPLACEMENTS[char]) out += PDF_REPLACEMENTS[char]
+        else if (code === 13) continue
+        else {
+            const plain = char.normalize('NFKD').replace(/[̀-ͯ]/g, '')
+            out += plain && [...plain].every((c) => (c.codePointAt(0) as number) < 256) ? plain : '?'
+        }
+    }
+    return out
+}
+
+/**
+ * Build guidance (Markdown) as plain text for the PDF: links become "text (url)", images their alt text,
+ * emphasis, code marks and heading/quote markers go, list bullets become "•", callout markers are dropped.
+ */
+export function markdownToPlainText(markdown: string): string {
+    return markdown
+        .replace(/\r\n?/g, '\n')
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g, (_, text: string, url: string) =>
+            text === url ? url : `${text} (${url})`,
+        )
+        .replace(/^\s*>\s?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/gim, '')
+        .replace(/^(\s*)>\s?/gm, '$1')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/^(\s*)[-*+]\s+/gm, '$1• ')
+        .replace(/```[^\n]*\n?/g, '')
+        .replace(/(\*\*|__)(.+?)\1/g, '$2')
+        .replace(/(^|[^\w*])[*_]([^*_\n]+)[*_](?=[^\w*]|$)/g, '$1$2')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+}
+
+/** The largest size with the same proportions that fits in the box (never enlarged) */
+export function fitWithin(width: number, height: number, maxWidth: number, maxHeight: number) {
+    if (width <= 0 || height <= 0) return { width: 0, height: 0 }
+    const scale = Math.min(1, maxWidth / width, maxHeight / height)
+    return { width: width * scale, height: height * scale }
+}
+
+/** Pixel size of an exported image: the diagram's bounds plus padding, capped so browsers can draw it */
+export function exportImageSize(bounds: { width: number; height: number }, padding = 48, max = 6000) {
+    const width = Math.ceil(bounds.width + padding * 2)
+    const height = Math.ceil(bounds.height + padding * 2)
+    const scale = Math.min(1, max / width, max / height)
+    return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) }
+}
 
 // ── Starter template ──
 

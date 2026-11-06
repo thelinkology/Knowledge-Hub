@@ -1,12 +1,14 @@
 'use client'
 
-import { useMemo, useState, type DragEvent, type ReactNode } from 'react'
+import { useImperativeHandle, useMemo, useRef, useState, type DragEvent, type ReactNode, type Ref } from 'react'
 import {
     Background,
     BackgroundVariant,
     ConnectionMode,
     Controls,
     MarkerType,
+    getNodesBounds,
+    getViewportForBounds,
     ReactFlow,
     ReactFlowProvider,
     useReactFlow,
@@ -29,17 +31,14 @@ import {
     connectNodes,
     createNode,
     edgeSides,
+    exportImageSize,
     newDiagramId,
     removeElements,
 } from '@/utils/diagram'
-import {
-    DIAGRAM_LIMITS,
-    DIAGRAM_NODE_KINDS,
-    diagramKindLabel,
-    type DiagramNodeKind,
-    type DiagramView,
-} from '@/@types/library/Diagram'
+import { DIAGRAM_LIMITS, type DiagramView } from '@/@types/library/Diagram'
+import useDiagramComponents from '@/utils/hooks/useDiagramComponents'
 import classNames from '@/utils/classNames'
+import type { DiagramComponent } from '@/@types/library/DiagramComponent'
 
 const NODE_TYPES = { component: DiagramNodeCard }
 const SNAP_GRID: [number, number] = [DIAGRAM_GRID, DIAGRAM_GRID]
@@ -47,7 +46,23 @@ const FIT_VIEW_OPTIONS = { padding: 0.15, maxZoom: 1 }
 const MARKER_END = { type: MarkerType.ArrowClosed, width: 18, height: 18 }
 const DELETE_KEYS = ['Delete', 'Backspace']
 
-const isKind = (value: string): value is DiagramNodeKind => (DIAGRAM_NODE_KINDS as readonly string[]).includes(value)
+/** Shown in an exported image instead of an image that can't be loaded (e.g. a link to another site) */
+const TRANSPARENT_PIXEL =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+
+/** An exported picture of the view */
+export interface DiagramImage {
+    dataUrl: string
+    /** Size in CSS pixels (the image itself has twice as many, for sharp printing) */
+    width: number
+    height: number
+}
+
+/** What the page can ask of the canvas (see exportRef) */
+export interface DiagramCanvasExporter {
+    /** The whole view (not just what's visible) as a PNG or JPEG on white, in the light theme */
+    toImage: (format: 'png' | 'jpeg') => Promise<DiagramImage>
+}
 
 export type SelectionUpdate = (previous: string[]) => string[]
 export type ViewUpdate = (view: DiagramView) => DiagramView
@@ -62,9 +77,13 @@ export interface DiagramCanvasProps {
     /** Editing: applies a change to the view */
     onViewChange?: (update: ViewUpdate) => void
     /** Editing: the palette beside the canvas; `add` puts a component in the middle of what's visible */
-    renderPalette?: (add: (kind: DiagramNodeKind) => void) => ReactNode
-    /** Height of the canvas (Tailwind classes) */
+    renderPalette?: (add: (component: DiagramComponent) => void) => ReactNode
+    /** Height of the canvas (Tailwind classes); ignored with `fill` */
     className?: string
+    /** Fill the parent's height (full screen) instead of a fixed height */
+    fill?: boolean
+    /** Receives the image exporter (Download as PNG / JPG / PDF) */
+    exportRef?: Ref<DiagramCanvasExporter>
 }
 
 /** The React Flow canvas for one view. Render it on the client only (see LazyDiagramCanvas). */
@@ -84,8 +103,12 @@ function Canvas({
     onViewChange,
     renderPalette,
     className,
+    fill,
+    exportRef,
 }: DiagramCanvasProps) {
-    const { screenToFlowPosition } = useReactFlow()
+    const { screenToFlowPosition, getNodes } = useReactFlow<DiagramFlowNode>()
+    const { resolve } = useDiagramComponents()
+    const canvas = useRef<HTMLDivElement>(null)
     const store = useStoreApi<DiagramFlowNode>()
     // Sizes React Flow measured (kept here because the nodes are rebuilt from the view on every change)
     const [measured, setMeasured] = useState<Record<string, Dimensions>>({})
@@ -97,19 +120,22 @@ function Canvas({
 
     const nodes = useMemo<DiagramFlowNode[]>(
         () =>
-            view.nodes.map((item) => ({
-                id: item.id,
-                type: 'component',
-                position: dragging[item.id] ?? { x: item.x, y: item.y },
-                data: { item, readOnly: !editable },
-                selected: selectedIds.has(item.id),
-                measured: measured[item.id],
-                draggable: editable,
-                connectable: editable,
-                deletable: editable,
-                ariaLabel: `${item.label}, ${diagramKindLabel[item.kind]}${item.step !== null ? `, build step ${item.step}` : ''}`,
-            })),
-        [view.nodes, dragging, editable, selectedIds, measured],
+            view.nodes.map((item) => {
+                const component = resolve(item.kind)
+                return {
+                    id: item.id,
+                    type: 'component' as const,
+                    position: dragging[item.id] ?? { x: item.x, y: item.y },
+                    data: { item, component, readOnly: !editable },
+                    selected: selectedIds.has(item.id),
+                    measured: measured[item.id],
+                    draggable: editable,
+                    connectable: editable,
+                    deletable: editable,
+                    ariaLabel: `${item.label}, ${component.name}${item.step !== null ? `, build step ${item.step}` : ''}`,
+                }
+            }),
+        [view.nodes, dragging, editable, selectedIds, measured, resolve],
     )
 
     const edges = useMemo<Edge[]>(() => {
@@ -238,13 +264,13 @@ function Canvas({
     }
 
     /** Adds a component with its top-left near `point` (a flow position), then selects it */
-    const addAt = (kind: DiagramNodeKind, point: XYPosition) => {
+    const addAt = (component: DiagramComponent, point: XYPosition) => {
         if (!editable) return
         if (view.nodes.length >= DIAGRAM_LIMITS.nodes) {
             toastError('A view holds up to 150 components. Start another view for the rest.')
             return
         }
-        const node = createNode(view, kind, {
+        const node = createNode(view, component, {
             x: point.x - DIAGRAM_NODE_SIZE.width / 2,
             y: point.y - DIAGRAM_NODE_SIZE.height / 2,
         })
@@ -253,10 +279,10 @@ function Canvas({
     }
 
     /** Adds a component in the middle of what the canvas shows (palette click or keyboard) */
-    const addInCentre = (kind: DiagramNodeKind) => {
+    const addInCentre = (component: DiagramComponent) => {
         const { width, height, transform } = store.getState()
         const [x, y, zoom] = transform
-        addAt(kind, { x: (width / 2 - x) / zoom, y: (height / 2 - y) / zoom })
+        addAt(component, { x: (width / 2 - x) / zoom, y: (height / 2 - y) / zoom })
     }
 
     const onDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -266,20 +292,63 @@ function Canvas({
     }
 
     const onDrop = (e: DragEvent<HTMLDivElement>) => {
-        const kind = e.dataTransfer.getData(DIAGRAM_KIND_MIME)
-        if (!editable || !isKind(kind)) return
+        const component = resolve(e.dataTransfer.getData(DIAGRAM_KIND_MIME))
+        if (!editable || !component.id) return
         e.preventDefault()
-        addAt(kind, screenToFlowPosition({ x: e.clientX, y: e.clientY }))
+        addAt(component, screenToFlowPosition({ x: e.clientX, y: e.clientY }))
     }
 
+    useImperativeHandle(
+        exportRef,
+        () => ({
+            toImage: async (format) => {
+                const element = canvas.current
+                const viewport = element?.querySelector<HTMLElement>('.react-flow__viewport')
+                const flowNodes = getNodes()
+                if (!element || !viewport || !flowNodes.length) throw new Error('There is nothing to export yet.')
+                const bounds = getNodesBounds(flowNodes)
+                const size = exportImageSize(bounds)
+                // Zoom 1, the diagram centred in the padding exportImageSize added around it
+                const { x, y, zoom } = getViewportForBounds(bounds, size.width, size.height, 0.1, 1, 0)
+                const { toJpeg, toPng } = await import('html-to-image')
+                const options = {
+                    backgroundColor: '#ffffff',
+                    width: size.width,
+                    height: size.height,
+                    pixelRatio: 2,
+                    imagePlaceholder: TRANSPARENT_PIXEL,
+                    style: {
+                        width: `${size.width}px`,
+                        height: `${size.height}px`,
+                        transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+                    },
+                    filter: (node: HTMLElement) => !node.classList?.contains('react-flow__handle'),
+                }
+                // Light colours while the picture is taken (html-to-image reads the computed styles)
+                element.classList.add('diagram-exporting')
+                try {
+                    const dataUrl =
+                        format === 'png'
+                            ? await toPng(viewport, options)
+                            : await toJpeg(viewport, { ...options, quality: 0.95 })
+                    return { dataUrl, width: size.width, height: size.height }
+                } finally {
+                    element.classList.remove('diagram-exporting')
+                }
+            },
+        }),
+        [getNodes],
+    )
+
     return (
-        <div className="flex min-h-0 gap-3">
+        <div className={classNames('flex min-h-0 flex-col gap-3 md:flex-row', fill && 'h-full')}>
             {editable && renderPalette?.(addInCentre)}
             <div
+                ref={canvas}
                 className={classNames(
                     'diagram-canvas min-w-0 flex-1',
                     !editable && 'diagram-readonly',
-                    className ?? 'h-[520px]',
+                    fill ? 'min-h-[320px] md:h-full' : (className ?? 'h-[520px]'),
                 )}
                 onDragOver={onDragOver}
                 onDrop={onDrop}

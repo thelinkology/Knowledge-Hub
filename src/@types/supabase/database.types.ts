@@ -453,6 +453,66 @@ export type Database = {
                     },
                 ]
             }
+            diagram_components: {
+                Row: {
+                    id: string
+                    code: string
+                    name: string
+                    description: string
+                    color: string
+                    icon: string
+                    image_url: string
+                    position: number
+                    created_by: string | null
+                    updated_by: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    code: string
+                    name: string
+                    description?: string
+                    color?: string
+                    icon?: string
+                    image_url?: string
+                    position?: number
+                    created_by?: string | null
+                    updated_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    code?: string
+                    name?: string
+                    description?: string
+                    color?: string
+                    icon?: string
+                    image_url?: string
+                    position?: number
+                    created_by?: string | null
+                    updated_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: 'diagram_components_created_by_fkey'
+                        columns: ['created_by']
+                        isOneToOne: false
+                        referencedRelation: 'profiles'
+                        referencedColumns: ['id']
+                    },
+                    {
+                        foreignKeyName: 'diagram_components_updated_by_fkey'
+                        columns: ['updated_by']
+                        isOneToOne: false
+                        referencedRelation: 'profiles'
+                        referencedColumns: ['id']
+                    },
+                ]
+            }
             intake_questions: {
                 Row: {
                     id: string

@@ -11,6 +11,15 @@
     @apply mt-2 text-center text-sm text-gray-500 dark:text-gray-400;
 }
 
+.lesson-content :is(h2, h3) {
+    /* Below the sticky header when “In this article” jumps to them */
+    scroll-margin-top: 5rem;
+}
+
+.lesson-content :is(h2, h3):focus {
+    outline: none;
+}
+
 .lesson-content img {
     @apply h-auto max-w-full;
 }

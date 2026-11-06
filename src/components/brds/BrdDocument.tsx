@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo } from 'react'
 import MarkdownContent from '@/components/shared/MarkdownContent'
+import DocumentOutline from '@/components/shared/DocumentOutline'
 import { BrdAudienceTag, BrdStatusTag } from './BrdTags'
 import { InfoIcon, LockedIcon } from '@/configs/icons.config'
 import { getClientPath, getIntakePath } from '@/configs/app.config'
@@ -121,25 +122,9 @@ export default function BrdDocument({ brd, preview }: BrdDocumentProps) {
                 </div>
             </article>
 
-            <aside className="no-print hidden xl:block" aria-label="In this document">
+            <aside className="no-print hidden xl:block">
                 {!preview && outline.length > 0 && (
-                    <div className="article-outline sticky top-20">
-                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                            In this document
-                        </div>
-                        <ul className="space-y-1 text-sm">
-                            {outline.map((heading) => (
-                                <li key={heading.id} className={heading.level === 3 ? 'pl-3' : undefined}>
-                                    <a
-                                        href={`#${heading.id}`}
-                                        className="block text-gray-600 hover:text-primary dark:text-gray-400"
-                                    >
-                                        {heading.text}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+                    <DocumentOutline outline={outline} title="In this document" className="sticky top-20" />
                 )}
             </aside>
         </div>

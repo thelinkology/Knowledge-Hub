@@ -3,6 +3,7 @@
  * so the icon language stays consistent and can be swapped in one place.
  */
 import type { ReactNode } from 'react'
+import type { DiagramIconKey } from '@/@types/library/DiagramComponent'
 import {
     TbAdjustmentsHorizontal,
     TbAlertTriangle,
@@ -118,6 +119,11 @@ import {
     TbListTree,
     TbCornerDownRight,
     TbFilePlus,
+    TbBox,
+    TbChartBar,
+    TbDeviceDesktop,
+    TbFolder,
+    TbWorld,
 } from 'react-icons/tb'
 import type { IconType } from 'react-icons'
 
@@ -274,9 +280,24 @@ const diagramIcons = {
     pipeline: TbTransfer,
     service: TbCloud,
     file: TbFileSpreadsheet,
-} satisfies Record<string, IconType>
+    api: TbApi,
+    app: TbDeviceDesktop,
+    chart: TbChartBar,
+    code: TbCode,
+    folder: TbFolder,
+    table: TbTable,
+    document: TbFileText,
+    users: TbUsers,
+    email: TbMail,
+    security: TbLock,
+    bot: TbRobot,
+    web: TbWorld,
+    package: TbBox,
+    schedule: TbCalendar,
+    alert: TbBell,
+} satisfies Record<DiagramIconKey, IconType>
 
-export type DiagramIconKey = keyof typeof diagramIcons
+export type { DiagramIconKey }
 
-/** Icon components for diagram component kinds (Diagram.diagramKindIcon) */
+/** Icon components for diagram component types (DiagramComponent.icon) */
 export const diagramIcon: Record<DiagramIconKey, IconType> = diagramIcons
