@@ -22,6 +22,9 @@
 /* The public welcome page */
 @import './others/_welcome.css';
 
+/* Page banner backdrops (home, knowledge) */
+@import './others/_hero.css';
+
 /* Third-party */
 @import 'simplebar-react/dist/simplebar.min.css';
 @import '@xyflow/react/dist/style.css';

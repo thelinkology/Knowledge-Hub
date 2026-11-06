@@ -22,10 +22,12 @@ const item = (
     title: string,
     icon: NavigationIconKey,
     authority: Permission[] = [],
+    shortTitle?: string,
 ): NavigationTree => ({
     key,
     path,
     title,
+    shortTitle,
     icon,
     type: NAV_ITEM_TYPE_ITEM,
     authority,
@@ -56,15 +58,22 @@ const navigationConfig: NavigationTree[] = [
         item('clients', clientsPath, 'Clients', 'clients', ['clients.read']),
     ]),
     section('requirements', 'Requirements', [
-        item('intakes', intakesPath, 'Discovery intakes', 'intake', ['requirements.manage']),
+        item('intakes', intakesPath, 'Discovery intakes', 'intake', ['requirements.manage'], 'Intakes'),
         item('brds', brdsPath, 'BRDs', 'brd', ['requirements.manage']),
     ]),
     section('admin', 'Administration', [
-        item('users', adminUsersPath, 'Users & roles', 'users', ['users.manage']),
+        item('users', adminUsersPath, 'Users & roles', 'users', ['users.manage'], 'Users'),
         item('products', adminProductsPath, 'Products', 'products', ['settings.manage']),
-        item('admin-intake', adminIntakePath, 'Intake & rules', 'rules', ['settings.manage']),
-        item('integrations', adminIntegrationsPath, 'Copilot integration', 'integrations', ['settings.manage']),
-        item('audit', adminAuditPath, 'Audit log', 'audit', ['audit.view']),
+        item('admin-intake', adminIntakePath, 'Intake & rules', 'rules', ['settings.manage'], 'Rules'),
+        item(
+            'integrations',
+            adminIntegrationsPath,
+            'Copilot integration',
+            'integrations',
+            ['settings.manage'],
+            'Copilot',
+        ),
+        item('audit', adminAuditPath, 'Audit log', 'audit', ['audit.view'], 'Audit'),
     ]),
 ]
 

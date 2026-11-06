@@ -43,6 +43,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
     poweredByHeader: false,
+    experimental: {
+        // Pages opened in the last 30 s come back instantly from the browser's router cache (each page's
+        // data still refreshes in the background through SWR). The default for dynamic pages is 0 s.
+        staleTimes: { dynamic: 30 },
+    },
     async headers() {
         return [{ source: '/:path*', headers: securityHeaders }]
     },

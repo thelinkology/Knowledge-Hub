@@ -6,8 +6,12 @@
  * at runtime by utils/applyThemeSchema from configs/preset-theme-schema.config — keep the two in step.
  *
  * Light is the default (a calm, Microsoft Learn-like reading surface with a Fluent-style blue).
- * Dark keeps the same hues at accessible contrast. Tweak the brand by changing --primary* here and in
- * configs/preset-theme-schema.config.
+ * Dark follows the KINETIQ site (kinetiqdata.com): a near-black navy, violet accents (#7640ff family) and a
+ * soft violet glow. Tweak the brand by changing --primary* here and in configs/preset-theme-schema.config.
+ *
+ * --primary-solid is the fill of solid buttons, with --on-primary-solid text on it. In light it's the
+ * primary; in dark it's KINETIQ's saturated violet with white text (5.3:1), while --primary stays a
+ * lighter violet that reads well as text and icons on dark surfaces (≥ 4.5:1 on cards).
  */
 
 :root {
@@ -16,6 +20,9 @@
     --primary-mild: #2886de;
     --primary-subtle: rgb(15 108 189 / 0.1);
     --neutral: #ffffff;
+    --primary-solid: var(--primary);
+    --primary-solid-hover: var(--primary-mild);
+    --on-primary-solid: var(--neutral);
 
     --gold: #8a5d00;
     --gold-mild: #b07a12;
@@ -46,18 +53,29 @@
 }
 
 .dark {
-    --primary: #479ef5;
-    --primary-deep: #2886de;
-    --primary-mild: #77b7f7;
-    --primary-subtle: rgb(71 158 245 / 0.14);
-    --neutral: #050b18;
+    --primary: #9b7bff;
+    --primary-deep: #7640ff;
+    --primary-mild: #b9a3ff;
+    --primary-subtle: rgb(118 64 255 / 0.18);
+    --neutral: #02031c;
+    --primary-solid: #7640ff;
+    --primary-solid-hover: #8a5dfc;
+    --on-primary-solid: #ffffff;
+
+    /* KINETIQ's mint, for the odd highlight */
+    --accent-mint: #52f8cb;
 
     --gold: #e8b64c;
     --gold-mild: #f3cd78;
     --gold-subtle: rgb(232 182 76 / 0.14);
 
+    /* Violet-navy surfaces (page #02031c like kinetiqdata.com) and borders */
+    --gray-700: #262a55;
+    --gray-800: #0e1134;
+    --gray-900: #080a27;
+    --gray-950: #02031c;
     /* Muted text on dark surfaces: ≥ 4.5:1 on gray-800, gray-900 and the page background */
-    --gray-500: #7d8aa5;
+    --gray-500: #8a8fb8;
 
     --error: #ff5d6c;
     --error-subtle: rgb(255 93 108 / 0.14);
@@ -65,8 +83,8 @@
     --success-subtle: rgb(52 211 153 / 0.14);
     --warning: #fb923c;
     --warning-subtle: rgb(251 146 60 / 0.14);
-    --info: #479ef5;
-    --info-subtle: rgb(71 158 245 / 0.14);
+    --info: #9b7bff;
+    --info-subtle: rgb(118 64 255 / 0.18);
 
     color-scheme: dark;
 }

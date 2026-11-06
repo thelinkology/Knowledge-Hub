@@ -31,6 +31,14 @@
         line-height: 1.6;
     }
 
+    /* Dark: KINETIQ's soft violet glow, rising from the bottom of the window (fixed, so it never scrolls) */
+    .dark body {
+        background-image:
+            radial-gradient(ellipse 80% 45% at 50% 105%, rgb(118 64 255 / 0.22), transparent 70%),
+            radial-gradient(ellipse 60% 35% at 85% -5%, rgb(118 64 255 / 0.1), transparent 70%);
+        background-attachment: fixed;
+    }
+
     h1,
     h2,
     h3,

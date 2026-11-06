@@ -8,6 +8,7 @@ import ProductLogo from '@/components/shared/ProductLogo'
 import { ForwardIcon, ImageIcon } from '@/configs/icons.config'
 import { getBrowseHref } from './browseParams'
 import { uploadImage } from '@/services/media'
+import ProductCardImage from './ProductCardImage'
 import { apiUpdateProduct } from '@/services/clients'
 import { useProductsStore } from '@/stores/AppStores'
 import useSession from '@/utils/hooks/useSession'
@@ -116,15 +117,9 @@ export default function ProductCards({ products, className }: ProductCardsProps)
                                 {product.description}
                             </span>
                         )}
-                        <span className="mt-auto flex h-32 items-center justify-center pt-4">
+                        <span className="mt-auto flex h-36 items-center justify-center pt-4">
                             {product.logoUrl ? (
-                                <img
-                                    src={product.logoUrl}
-                                    alt=""
-                                    className="max-h-28 max-w-[85%] object-contain transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none"
-                                    loading="lazy"
-                                    decoding="async"
-                                />
+                                <ProductCardImage src={product.logoUrl} />
                             ) : (
                                 <ProductLogo product={product} size={64} />
                             )}

@@ -5,11 +5,11 @@ import Link from 'next/link'
 import Menu from '@/components/ui/Menu'
 import MenuGroup from '@/components/ui/Menu/MenuGroup'
 import MenuItem from '@/components/ui/Menu/MenuItem'
-import Tooltip from '@/components/ui/Tooltip'
 import navigationIcon, { ExpandIcon } from '@/configs/icons.config'
 import { NAV_ITEM_TYPE_TITLE } from '@/constants/navigation.constant'
 import { useNavSectionsStore } from '@/stores/NavSectionsStore'
 import classNames from '@/utils/classNames'
+import NavRail from './NavRail'
 import type { Direction } from '@/@types/theme'
 import type { NavigationTree } from '@/@types/navigation'
 
@@ -17,19 +17,19 @@ export interface VerticalMenuContentProps {
     collapsed?: boolean
     routeKey: string
     navigationTree: NavigationTree[]
+    /** Not used any more (kept so callers don't change) */
     direction?: Direction
     onMenuItemClick?: () => void
 }
 
 /**
  * Side-navigation menu in titled sections. Each section title collapses/expands its items (remembered in
- * this browser). Collapsed side nav: icons only, with the title as a tooltip, and every section open.
+ * this browser). Collapsed side nav: a rail of icons with short labels underneath (NavRail).
  */
 export default function VerticalMenuContent({
     collapsed,
     routeKey,
     navigationTree,
-    direction = 'ltr',
     onMenuItemClick,
 }: VerticalMenuContentProps) {
     const collapsedSections = useNavSectionsStore((s) => s.collapsed)
@@ -40,34 +40,20 @@ export default function VerticalMenuContent({
         void useNavSectionsStore.persist.rehydrate()
     }, [])
 
-    const renderItem = (nav: NavigationTree) => {
-        const link = (
-            <Link href={nav.path} className="flex h-full w-full items-center gap-2" onClick={onMenuItemClick}>
-                <span className="text-2xl">{navigationIcon[nav.icon]}</span>
-                {!collapsed && <span>{nav.title}</span>}
-            </Link>
-        )
-        return (
-            <MenuItem key={nav.key} eventKey={nav.key}>
-                {collapsed ? (
-                    <Tooltip title={nav.title} placement={direction === 'rtl' ? 'left' : 'right'}>
-                        {link}
-                    </Tooltip>
-                ) : (
-                    link
-                )}
-            </MenuItem>
-        )
+    if (collapsed) {
+        return <NavRail routeKey={routeKey} navigationTree={navigationTree} onMenuItemClick={onMenuItemClick} />
     }
 
+    const renderItem = (nav: NavigationTree) => (
+        <MenuItem key={nav.key} eventKey={nav.key}>
+            <Link href={nav.path} className="flex h-full w-full items-center gap-2" onClick={onMenuItemClick}>
+                <span className="text-2xl">{navigationIcon[nav.icon]}</span>
+                <span>{nav.title}</span>
+            </Link>
+        </MenuItem>
+    )
+
     const renderSection = (nav: NavigationTree) => {
-        if (collapsed) {
-            return (
-                <MenuGroup key={nav.key} label={null}>
-                    {nav.subMenu.map(renderItem)}
-                </MenuGroup>
-            )
-        }
         const closed = !!collapsedSections[nav.key]
         const listId = `nav-section-${nav.key}`
         return (
@@ -93,7 +79,7 @@ export default function VerticalMenuContent({
     }
 
     return (
-        <Menu className="px-4 pb-4" sideCollapsed={collapsed} defaultActiveKeys={[routeKey]}>
+        <Menu className="px-4 pb-4" defaultActiveKeys={[routeKey]}>
             {navigationTree.map((nav) => (nav.type === NAV_ITEM_TYPE_TITLE ? renderSection(nav) : renderItem(nav)))}
         </Menu>
     )

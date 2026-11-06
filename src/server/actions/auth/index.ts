@@ -27,19 +27,18 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     const userId = claims?.claims?.sub
     if (!userId) return null
 
+    // One round trip: the profile and the person's clients (RLS lets everyone read their own memberships)
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id, email, display_name, role')
+        .select('id, email, display_name, role, client_members(client_id)')
         .eq('id', userId)
         .maybeSingle()
     if (!profile) return null
 
-    // Viewers read shared knowledge plus their own clients' (client_members); other roles read every client
-    let clientIds: string[] | null = null
-    if (!hasPermission(profile.role, 'clients.read')) {
-        const { data: memberships } = await supabase.from('client_members').select('client_id').eq('user_id', userId)
-        clientIds = (memberships ?? []).map((m) => m.client_id)
-    }
+    // Viewers read shared knowledge plus their own clients'; other roles read every client
+    const clientIds = hasPermission(profile.role, 'clients.read')
+        ? null
+        : profile.client_members.map((m) => m.client_id)
 
     return {
         id: profile.id,

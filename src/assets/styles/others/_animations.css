@@ -17,6 +17,55 @@
     }
 }
 
+/*
+ * Page skeleton (components/shared/PageSkeleton, shown by app/(portal)/loading.tsx): invisible for the
+ * first 150 ms, so quick navigations don't flicker, then a gentle fade in and a soft shimmer.
+ */
+.page-skeleton {
+    animation: skeleton-appear 0.25s ease-out 0.15s both;
+}
+
+.skeleton-bar,
+.skeleton-block {
+    background: var(--gray-100);
+    border-radius: 0.75rem;
+}
+
+.skeleton-block {
+    border-radius: 1rem;
+}
+
+.dark .skeleton-bar,
+.dark .skeleton-block {
+    background: var(--gray-800);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .skeleton-bar,
+    .skeleton-block {
+        animation: skeleton-pulse 1.6s ease-in-out infinite;
+    }
+}
+
+@keyframes skeleton-appear {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes skeleton-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.55;
+    }
+}
+
 /* Safety net for third-party/template transitions: near-instant when the user asks for less motion */
 @media (prefers-reduced-motion: reduce) {
     *,

@@ -14,11 +14,11 @@ const presetThemeSchemaConfig: ThemeSchema = {
             neutral: '#ffffff',
         },
         dark: {
-            primary: '#479ef5',
-            primaryDeep: '#2886de',
-            primaryMild: '#77b7f7',
-            primarySubtle: 'rgb(71 158 245 / 0.14)',
-            neutral: '#050b18',
+            primary: '#9b7bff',
+            primaryDeep: '#7640ff',
+            primaryMild: '#b9a3ff',
+            primarySubtle: 'rgb(118 64 255 / 0.18)',
+            neutral: '#02031c',
         },
     },
 }

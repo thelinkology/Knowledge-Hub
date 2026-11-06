@@ -1,0 +1,142 @@
+/*
+ * Page banner backdrops (components/shared/HeroBackdrop: home and knowledge). Slow and subtle on purpose.
+ * Only transform and opacity are animated, which the browser hands to the GPU (no layout or repaint), and
+ * browsers pause animations in background tabs.
+ */
+
+.hero-orb {
+    /* Blurred once, then moved as a layer: the blur isn't recalculated every frame */
+    will-change: transform, opacity;
+}
+
+/* Its colour comes from the tone (a text-* class on the svg) */
+.hero-line {
+    stroke-dasharray: 4 8;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .hero-orb-a {
+        animation: hero-drift-a 22s ease-in-out infinite;
+    }
+    .hero-orb-b {
+        animation: hero-drift-b 26s ease-in-out infinite;
+    }
+    .hero-orb-c {
+        animation: hero-drift-c 30s ease-in-out infinite;
+    }
+    .hero-tile {
+        animation: hero-bob 8s ease-in-out infinite;
+    }
+    .hero-twinkle {
+        animation: hero-twinkle 5s ease-in-out infinite;
+    }
+    .hero-line {
+        animation: hero-dash 40s linear infinite;
+    }
+}
+
+/*
+ * Reduced motion (e.g. Windows → Accessibility → Visual effects → Animation effects off): nothing moves,
+ * but the glows breathe and the sparkles fade, slowly, so the banner still feels alive.
+ */
+@media (prefers-reduced-motion: reduce) {
+    /* !important: the global safety net (others/_animations.css) otherwise cuts every animation short */
+    .hero-orb,
+    .hero-twinkle {
+        animation-iteration-count: infinite !important;
+    }
+    .hero-orb {
+        animation: hero-breathe 12s ease-in-out infinite;
+        animation-duration: 12s !important;
+    }
+    .hero-orb-b {
+        animation-delay: -4s;
+    }
+    .hero-orb-c {
+        animation-delay: -8s;
+    }
+    .hero-twinkle {
+        animation: hero-fade 6s ease-in-out infinite;
+        animation-duration: 6s !important;
+    }
+}
+
+@keyframes hero-breathe {
+    0%,
+    100% {
+        opacity: 0.55;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes hero-fade {
+    0%,
+    100% {
+        opacity: 0.1;
+    }
+    50% {
+        opacity: 0.85;
+    }
+}
+
+@keyframes hero-drift-a {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+    50% {
+        transform: translate(60px, 30px) scale(1.08);
+    }
+}
+
+@keyframes hero-drift-b {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+    50% {
+        transform: translate(-70px, -25px) scale(1.1);
+    }
+}
+
+@keyframes hero-drift-c {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.7;
+    }
+    50% {
+        transform: translate(25px, -20px) scale(1.15);
+        opacity: 1;
+    }
+}
+
+@keyframes hero-bob {
+    0%,
+    100% {
+        transform: translateY(0) rotate(-3deg);
+    }
+    50% {
+        transform: translateY(-10px) rotate(3deg);
+    }
+}
+
+@keyframes hero-twinkle {
+    0%,
+    100% {
+        opacity: 0.15;
+        transform: scale(0.7);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1);
+    }
+}
+
+@keyframes hero-dash {
+    to {
+        stroke-dashoffset: -240;
+    }
+}

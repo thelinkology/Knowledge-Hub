@@ -12,6 +12,7 @@ import BrowseFilters from './BrowseFilters'
 import CollectionDialog from './CollectionDialog'
 import CollectionGrid from './CollectionGrid'
 import KnowledgeSearchBox from './KnowledgeSearchBox'
+import KnowledgeHeroBackdrop from './KnowledgeHeroBackdrop'
 import NewArticleDialog from './NewArticleDialog'
 import ProductCards from './ProductCards'
 import SearchResults from './SearchResults'
@@ -64,10 +65,11 @@ export default function KnowledgeBrowseClientPage() {
 
     return (
         <>
-            <section className="mb-6 rounded-2xl border border-gray-200 bg-primary-subtle px-4 py-8 sm:px-8 md:py-10 dark:border-gray-700">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <section className="relative isolate mb-6 overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 via-cyan-50 to-emerald-50 px-4 py-8 sm:px-8 md:py-10 dark:border-gray-700 dark:from-teal-500/10 dark:via-gray-900 dark:to-cyan-500/10">
+                <KnowledgeHeroBackdrop />
+                <div className="animate-rise-in flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="max-w-2xl">
-                        <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                        <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">
                             Knowledge
                         </div>
                         <h1 className="text-2xl md:text-4xl">Find what the team already knows</h1>

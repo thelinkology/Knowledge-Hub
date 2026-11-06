@@ -59,7 +59,7 @@ function SignInButton({ className }: { className?: string }) {
         <Link
             href={signInPath}
             className={classNames(
-                'inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-semibold text-neutral shadow-lg shadow-primary/20 transition hover:bg-primary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none',
+                'inline-flex items-center justify-center gap-2 rounded-xl bg-primary-solid px-5 py-3 font-semibold text-on-primary-solid shadow-lg shadow-primary/20 transition hover:bg-primary-solid-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none',
                 className,
             )}
         >
