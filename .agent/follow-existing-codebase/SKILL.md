@@ -134,7 +134,7 @@ src/
 │   ├── (portal)/      → app shell (PostLoginLayout); page.tsx files are server components
 │   ├── api/<route>/route.ts → validate (zod) → server action → response
 │   ├── api/v1/        → the agent API (API-key auth, published content only)
-│   └── auth/confirm/  → email confirmation callback
+│   └── auth/confirm/  → email links land here (a button; verify/ POST signs in, scanner-safe)
 ├── assets/styles/     → ALL CSS (app.css manifest; tailwind/, components/, template/, knowledge/, others/)
 ├── components/
 │   ├── ui/ shared/ template/ auth/ swr/

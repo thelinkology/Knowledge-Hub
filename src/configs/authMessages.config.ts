@@ -53,12 +53,38 @@ export const authMessages = {
         noSession: 'This reset link has expired or was already used. Ask for a new one — it only takes a moment.',
         requestNew: 'Send me a new link',
     },
+    /**
+     * The page every email link opens. The link only signs in when the person presses the button: mail
+     * scanners (e.g. Microsoft Defender Safe Links) open links before the person does and would otherwise
+     * use up the one-time link.
+     */
+    confirmLink: {
+        signIn: { title: 'Sign in to Knowledge Hub', body: 'Press the button to finish signing in.', submit: 'Sign in' },
+        invite: {
+            title: 'Accept your invitation',
+            body: 'Press the button to accept, then choose your password.',
+            submit: 'Accept and continue',
+        },
+        recovery: {
+            title: 'Reset your password',
+            body: 'Press the button to continue, then choose a new password.',
+            submit: 'Continue',
+        },
+        signup: { title: 'Confirm your email', body: 'Press the button to confirm your email.', submit: 'Confirm' },
+        emailChange: {
+            title: 'Confirm your new email',
+            body: 'Press the button to confirm your new email address.',
+            submit: 'Confirm',
+        },
+        why: 'This extra step stops email security scanners from using up your one-time link before you do.',
+        missing: 'This link is incomplete. Copy the whole link from the email, or ask for a new one.',
+    },
     notices: {
         signedOut: 'You’ve signed out. See you next time!',
         emailConfirmed: 'Your email is confirmed. Sign in to start.',
         passwordUpdated: 'Your password is saved. Welcome back!',
         linkExpired:
-            'That link has expired or was already used. Try signing in — if your email still needs confirming, we’ll offer to send a fresh link.',
+            'That link has expired or was already used. Sign in with your password, or press “Email me a sign-in link” for a new one.',
         sessionExpired: 'You were signed out because you were away for a while. Sign in to carry on.',
     },
     /** Server error codes → what the person sees */

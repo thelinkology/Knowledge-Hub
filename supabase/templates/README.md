@@ -28,9 +28,11 @@ work on **any device**. (Supabase's default links only work in the browser that 
 
 ## How the links work
 
-Each link goes to `/auth/confirm?token_hash=…&type=…&next=…`. That route
-(`src/app/auth/confirm/route.ts`) verifies the token, which signs the person in, then sends them to
-`next`:
+Each link goes to `/auth/confirm?token_hash=…&type=…&next=…`. That page shows one button; pressing it
+posts to `/auth/confirm/verify` (`src/app/auth/confirm/verify/route.ts`), which verifies the token, signs
+the person in, then sends them to `next`. Opening the link alone changes nothing, because mail scanners
+such as Microsoft Defender Safe Links open every link before the person does and would otherwise use up
+the one-time token (“That link has expired or was already used”). After pressing the button, people go to:
 
 - the dashboard with a welcome message, after confirming
 - `/reset-password`, after a reset link, and after accepting an invitation (to choose a password)
