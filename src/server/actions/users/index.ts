@@ -2,6 +2,7 @@ import 'server-only'
 import { supabaseAdmin } from '@/server/data/supabase/admin'
 import { check, unwrap, unwrapMaybe } from '@/server/data/supabase/errors'
 import { recordAudit } from '@/server/actions/audit'
+import { sendSignInLink } from '@/server/actions/auth'
 import { ConflictError, DataError, NotFoundError } from '@/@types/errors'
 import type { SessionUser } from '@/@types/auth/SessionUser'
 import type { Collection } from '@/@types/common'
@@ -117,6 +118,18 @@ export async function inviteUser(admin: SessionUser, input: InviteUserInput, ori
         role: input.role,
         createdAt: new Date(),
     }
+}
+
+/** Emails the person a one-time sign-in link (Supabase's "Magic link" email) and records it */
+export async function sendUserSignInLink(admin: SessionUser, userId: string, origin: string) {
+    const profile = unwrapMaybe(
+        await supabaseAdmin().from('profiles').select('id, email').eq('id', userId).maybeSingle(),
+        'find the user',
+    )
+    if (!profile) throw new NotFoundError('That user doesn’t exist.', 'USER_NOT_FOUND')
+    await sendSignInLink(profile.email, origin, { reveal: true })
+    await recordAudit(admin.id, 'user.sign_in_link_sent', 'user', profile.id, { email: profile.email })
+    return { email: profile.email }
 }
 
 /** Removes the account (and, by cascade, its profile). Content they wrote stays, without an author. */

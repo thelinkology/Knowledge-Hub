@@ -12,6 +12,9 @@ export const apiSignUp = (input: SignUpInput) =>
 export const apiResendConfirmation = (input: EmailOnlyInput) =>
     api.fetchJson<void>({ method: 'post', url: '/auth/resend', data: input })
 
+export const apiSendSignInLink = (input: EmailOnlyInput) =>
+    api.fetchJson<void>({ method: 'post', url: '/auth/magic-link', data: input })
+
 export const apiForgotPassword = (input: EmailOnlyInput) =>
     api.fetchJson<void>({ method: 'post', url: '/auth/forgot-password', data: input })
 

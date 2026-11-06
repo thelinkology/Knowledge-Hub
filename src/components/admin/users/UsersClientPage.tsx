@@ -17,7 +17,10 @@ import UserAvatar from '@/components/shared/UserAvatar'
 import ChangeRoleDialog from './ChangeRoleDialog'
 import DeleteAccountDialog from './DeleteAccountDialog'
 import InviteUserDialog from './InviteUserDialog'
-import { AddUserIcon, DeleteIcon, PeopleIcon, SearchIcon } from '@/configs/icons.config'
+import { AddUserIcon, DeleteIcon, EmailIcon, PeopleIcon, SearchIcon } from '@/configs/icons.config'
+import { toastError, toastSuccess } from '@/components/ui/toast/toast'
+import { apiSendUserSignInLink } from '@/services/users'
+import { tryGetErrorMessage } from '@/utils/errors'
 import { homePath } from '@/configs/app.config'
 import { useUsersStore } from '@/stores/AdminStores'
 import { ROLES, roleLabel, type Role } from '@/@types/auth/Roles'
@@ -81,6 +84,20 @@ export default function UsersClientPage() {
 
     const [roleChange, setRoleChange] = useState<{ user: UserAccount; role: Role } | null>(null)
     const [deleting, setDeleting] = useState<UserAccount | null>(null)
+    /** The account a sign-in link is being emailed to */
+    const [sendingLinkTo, setSendingLinkTo] = useState<string | null>(null)
+
+    const sendSignInLink = async (account: UserAccount) => {
+        setSendingLinkTo(account.id)
+        try {
+            const { email } = await apiSendUserSignInLink(account.id)
+            toastSuccess(`Sign-in link sent to ${email}. It works once, for one hour.`)
+        } catch (error) {
+            toastError(tryGetErrorMessage(error), error)
+        } finally {
+            setSendingLinkTo(null)
+        }
+    }
     const [inviting, setInviting] = useState(false)
 
     const records = data?.records ?? []
@@ -213,7 +230,17 @@ export default function UsersClientPage() {
                                                     <Td className="whitespace-nowrap">
                                                         {formatDate(account.createdAt)}
                                                     </Td>
-                                                    <Td className="text-right">
+                                                    <Td className="text-right whitespace-nowrap">
+                                                        <Tooltip title="Email a sign-in link">
+                                                            <Button
+                                                                size="xs"
+                                                                variant="plain"
+                                                                icon={<EmailIcon />}
+                                                                loading={sendingLinkTo === account.id}
+                                                                aria-label={`Email ${account.displayName} a sign-in link`}
+                                                                onClick={() => void sendSignInLink(account)}
+                                                            />
+                                                        </Tooltip>
                                                         {!isMe && (
                                                             <Tooltip title="Delete account">
                                                                 <Button

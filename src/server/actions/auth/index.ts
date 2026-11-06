@@ -1,8 +1,9 @@
 import 'server-only'
 import { cache } from 'react'
 import { notFound } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
 import { createUserClient } from '@/server/data/supabase/server'
-import { isSupabaseConfigured } from '@/server/data/supabase/config'
+import { isSupabaseConfigured, requireSupabaseConfig } from '@/server/data/supabase/config'
 import {
     DataError,
     ForbiddenError,
@@ -143,6 +144,35 @@ export async function resendConfirmation({ email }: EmailOnlyInput, origin: stri
     })
     if (error && (error.status === 429 || error.code?.startsWith('over_'))) throw authErrorFor(error)
     if (error) console.warn('[auth] resend', error.code ?? error.message)
+}
+
+/**
+ * Emails a one-time sign-in link ("magic link") to an EXISTING account: Supabase's "Magic link or OTP"
+ * template (supabase/templates/magic_link.html), landing on /auth/confirm, which signs the person in and
+ * goes to `next`. Never creates an account. Uses a client without a session, so asking for someone
+ * else's link (an administrator) doesn't touch the caller's own session.
+ *
+ * `reveal` = false (the sign-in page): always "succeeds", so it can't reveal who has an account.
+ * `reveal` = true (administrators): Supabase's refusal is reported.
+ */
+export async function sendSignInLink(email: string, origin: string, { reveal = false, next = '/' } = {}) {
+    const { url, publishableKey } = requireSupabaseConfig()
+    const supabase = createClient(url, publishableKey, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    })
+    const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false, emailRedirectTo: confirmUrl(origin, next) },
+    })
+    if (!error) return
+    if (error.status === 429 || error.code?.startsWith('over_')) throw authErrorFor(error)
+    if (error.code === 'email_address_not_authorized') {
+        console.error('[auth] sign-in link not sent: set up custom SMTP in Supabase (Authentication → Emails)')
+        if (reveal) throw authError('EMAIL_NOT_SENT')
+        return
+    }
+    console.warn('[auth] sign-in link', error.code ?? error.message)
+    if (reveal) throw authError('AUTH_FAILED')
 }
 
 /** Emails a password-reset link. Always "succeeds" so it can't reveal who has an account. */

@@ -14,6 +14,12 @@ export const authMessages = {
         passwordLabel: 'Password',
         submit: 'Sign in',
         forgotPassword: 'Forgot your password?',
+        orDivider: 'or',
+        magicLink: 'Email me a sign-in link',
+        magicLinkHint: 'No password needed: we’ll email you a link that signs you in.',
+        magicLinkNeedsEmail: 'Enter your work email above first.',
+        magicLinkSent: (email: string) =>
+            `If ${email} has an account, a sign-in link is on its way. Open it on any device; it works once, for one hour.`,
         noAccount: 'New here?',
         createAccount: 'Create your account',
     },

@@ -22,6 +22,7 @@ export type AuditQuery = z.infer<typeof AuditQuerySchema>
 export const auditActionLabel: Record<string, string> = {
     'user.role_changed': 'Changed a role',
     'user.invited': 'Invited someone',
+    'user.sign_in_link_sent': 'Emailed a sign-in link',
     'user.deleted': 'Deleted an account',
     'client.created': 'Created a client',
     'client.deleted': 'Deleted a client',

@@ -10,11 +10,11 @@ import Input from '@/components/ui/Input'
 import { Form, FormItem } from '@/components/ui/Form'
 import PasswordInput from './PasswordInput'
 import CheckEmailPanel from './CheckEmailPanel'
-import { SignInIcon } from '@/configs/icons.config'
+import { EmailIcon, SignInIcon } from '@/configs/icons.config'
 import { forgotPasswordPath, homePath, signUpPath } from '@/configs/app.config'
 import { authMessages } from '@/configs/authMessages.config'
-import { apiSignIn } from '@/services/misc'
-import { SignInSchema, type SignInInput } from '@/@types/auth/AuthSchema'
+import { apiSendSignInLink, apiSignIn } from '@/services/misc'
+import { EmailSchema, SignInSchema, type SignInInput } from '@/@types/auth/AuthSchema'
 import { getErrorCode, tryGetErrorMessage } from '@/utils/errors'
 
 export type SignInNotice = keyof typeof authMessages.notices
@@ -41,6 +41,8 @@ const NOTICE_TYPE: Record<SignInNotice, 'success' | 'info' | 'warning'> = {
 export default function SignInCard({ returnTo, notice }: SignInCardProps) {
     const [error, setError] = useState<{ text: string; code?: string } | null>(null)
     const [resendFor, setResendFor] = useState<string | null>(null)
+    const [linkSentTo, setLinkSentTo] = useState<string | null>(null)
+    const [sendingLink, setSendingLink] = useState(false)
     const form = useForm<SignInInput>({
         resolver: zodResolver(SignInSchema),
         defaultValues: { login: '', password: '' },
@@ -48,8 +50,32 @@ export default function SignInCard({ returnTo, notice }: SignInCardProps) {
     const {
         control,
         getValues,
+        setError: setFieldError,
+        clearErrors,
         formState: { errors, isSubmitting },
     } = form
+
+    /** "Email me a sign-in link": uses the email typed above, no password */
+    const sendLink = async () => {
+        setError(null)
+        setLinkSentTo(null)
+        const email = EmailSchema.safeParse(getValues('login'))
+        if (!email.success) {
+            setFieldError('login', { message: m.magicLinkNeedsEmail })
+            document.getElementById('login')?.focus()
+            return
+        }
+        clearErrors()
+        setSendingLink(true)
+        try {
+            await apiSendSignInLink({ email: email.data })
+            setLinkSentTo(email.data)
+        } catch (e) {
+            setError({ text: tryGetErrorMessage(e), code: getErrorCode(e) })
+        } finally {
+            setSendingLink(false)
+        }
+    }
 
     const onValid = async (input: SignInInput) => {
         setError(null)
@@ -68,7 +94,12 @@ export default function SignInCard({ returnTo, notice }: SignInCardProps) {
         <>
             <h1 className="mb-1 text-2xl">{m.title}</h1>
             <p className="mb-6 text-gray-500 dark:text-gray-400">{m.subtitle}</p>
-            {notice && !error && (
+            {linkSentTo && !error && (
+                <Alert showIcon type="success" className="mb-5">
+                    {m.magicLinkSent(linkSentTo)}
+                </Alert>
+            )}
+            {notice && !error && !linkSentTo && (
                 <Alert showIcon type={NOTICE_TYPE[notice]} className="mb-5">
                     {authMessages.notices[notice]}
                 </Alert>
@@ -141,6 +172,24 @@ export default function SignInCard({ returnTo, notice }: SignInCardProps) {
                     </Button>
                 </Form>
             </FormProvider>
+            <div className="my-5 flex items-center gap-3 text-xs text-gray-400" aria-hidden>
+                <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                {m.orDivider}
+                <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+            </div>
+            <Button
+                block
+                type="button"
+                loading={sendingLink}
+                icon={<EmailIcon />}
+                aria-describedby="magic-link-hint"
+                onClick={() => void sendLink()}
+            >
+                {m.magicLink}
+            </Button>
+            <p id="magic-link-hint" className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
+                {m.magicLinkHint}
+            </p>
             <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
                 {m.noAccount}{' '}
                 <Link href={signUpPath} className="font-semibold text-primary hover:underline">

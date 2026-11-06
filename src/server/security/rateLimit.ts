@@ -27,6 +27,8 @@ export const LIMITS = {
     clientErrorsPerIp: { max: 20, windowSeconds: 60 },
     searchPerUser: { max: 120, windowSeconds: 60 },
     invitePerUser: { max: 20, windowSeconds: 3600 },
+    /** Administrators emailing sign-in links */
+    signInLinkPerUser: { max: 30, windowSeconds: 3600 },
     /** Copilot Studio and other agents, per API key */
     agentPerKey: { max: 300, windowSeconds: 60 },
     generateBrdsPerUser: { max: 30, windowSeconds: 3600 },

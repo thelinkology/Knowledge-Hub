@@ -44,6 +44,9 @@ export const apiSetUserRole = (userId: string, input: SetRoleInput) =>
 export const apiInviteUser = (input: InviteUserInput) =>
     api.fetchJson<UserAccount>({ method: 'post', url: '/admin/users', data: input })
 
+export const apiSendUserSignInLink = (userId: string) =>
+    api.fetchJson<{ email: string }>({ method: 'post', url: `/admin/users/${userId}/sign-in-link` })
+
 export const apiDeleteUser = (userId: string) =>
     api.fetchJson<void>({ method: 'delete', url: `/admin/users/${userId}` })
 

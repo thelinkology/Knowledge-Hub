@@ -75,8 +75,8 @@ revisions, rules, intakes, BRDs; admins read the audit log. No browser-role writ
 
 | Folder | Main exports |
 |---|---|
-| `actions/auth` | `getCurrentUser`, `requireUser`, `assertPermission`, `requirePagePermission`, sign in/up/out, password reset (`SIGNUP_EMAIL_DOMAINS`) |
-| `actions/users` | `getUsers`, `getPeople`, `setUserRole`, `inviteUser`, `deleteUserAccount`, `getMyProfile`, `updateProfile` |
+| `actions/auth` | `getCurrentUser`, `requireUser`, `assertPermission`, `requirePagePermission`, sign in/up/out, password reset, `sendSignInLink` (magic link, existing accounts only) (`SIGNUP_EMAIL_DOMAINS`: commas, semicolons or spaces) |
+| `actions/users` | `getUsers`, `getPeople`, `setUserRole`, `inviteUser`, `sendUserSignInLink`, `deleteUserAccount`, `getMyProfile`, `updateProfile` |
 | `actions/products` | `getProducts` (cached), `createProduct`, `updateProduct`, `knownProductIds`, `parseMilestones` |
 | `actions/clients` | `getClients`, `getClientOptions`, `getClient(id, viewer)`, `createClient`, `updateClient`, `deleteClient`, `assertClientExists` |
 | `actions/knowledge` | collections CRUD + `arrangeCollection` (sub-article tree); `getArticles`, `getArticleView`, `getArticleEditor`, `createArticle`, `saveArticle`, `setArticleStatus`, `deleteArticle`, revisions + restore; `searchKnowledge` |
