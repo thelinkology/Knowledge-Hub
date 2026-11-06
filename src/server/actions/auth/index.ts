@@ -90,6 +90,10 @@ const authErrorFor = (error: { name?: string; message: string; status?: number; 
         case 'session_not_found':
         case 'session_expired':
             return authError('RESET_SESSION_MISSING')
+        // Supabase's built-in email service only sends to the project's team members (set up custom SMTP)
+        case 'email_address_not_authorized':
+            console.error('[auth] email not sent: set up custom SMTP in Supabase (Authentication → Emails)')
+            return authError('EMAIL_NOT_SENT')
     }
     if (/already registered/i.test(error.message)) return authError('ACCOUNT_EXISTS')
     if (error.status === 400) return authError('INVALID_CREDENTIALS')

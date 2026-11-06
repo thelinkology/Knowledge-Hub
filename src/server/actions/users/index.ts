@@ -91,9 +91,20 @@ export async function inviteUser(admin: SessionUser, input: InviteUserInput, ori
     })
     if (error || !data.user) {
         console.error('[users] invite', error?.code ?? error?.message)
-        throw error?.code === 'email_exists'
-            ? new ConflictError('Someone with that email already has an account.', 'ACCOUNT_EXISTS')
-            : new DataError('Couldn’t send the invitation. Check the address and try again.', 'INVITE_FAILED')
+        if (error?.code === 'email_exists')
+            throw new ConflictError('Someone with that email already has an account.', 'ACCOUNT_EXISTS')
+        // Supabase's built-in email service only sends to the project's team members, a few emails an hour
+        if (error?.code === 'email_address_not_authorized')
+            throw new DataError(
+                'Supabase’s built-in email service only sends to members of the Supabase project. Set up custom SMTP in Supabase (Authentication → Emails → SMTP settings), or add the person in Supabase (Authentication → Users → Add user).',
+                'INVITE_FAILED',
+            )
+        if (error?.status === 429 || error?.code?.startsWith('over_'))
+            throw new DataError(
+                'The email limit was reached (Supabase’s built-in email service sends only a few emails an hour). Try again later, or set up custom SMTP in Supabase.',
+                'INVITE_FAILED',
+            )
+        throw new DataError('Couldn’t send the invitation. Check the address and try again.', 'INVITE_FAILED')
     }
     if (input.role !== 'viewer') {
         check(await db.from('profiles').update({ role: input.role }).eq('id', data.user.id), 'set the role')

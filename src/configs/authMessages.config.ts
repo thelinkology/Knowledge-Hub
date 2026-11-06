@@ -81,6 +81,8 @@ export const authMessages = {
         RESET_SESSION_MISSING: 'Your reset link has expired. Ask for a new one.',
         DOMAIN_NOT_ALLOWED:
             'Sign-up is limited to company email addresses. Use your work email, or ask an administrator to invite you.',
+        EMAIL_NOT_SENT:
+            'We couldn’t send the confirmation email to that address. Ask an administrator to add your account.',
     },
     validation: {
         email: 'Enter an email address, like name@company.com',
