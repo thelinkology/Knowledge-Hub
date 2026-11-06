@@ -45,6 +45,10 @@ components, deployed on Vercel. Conventions for contributors (human or AI) are i
    update public.profiles set role = 'admin' where email = 'you@company.com';
    ```
 
+7. **Optional sample data**: paste `supabase/seed/sample_data.sql` into the SQL editor and run it (after step 6, so
+   you're the author). It adds demo clients, knowledge for every product, library assets with diagrams, intakes and
+   BRDs; it's safe to run twice, and the end of the file has the statements that remove it.
+
 ## Deploying to Vercel
 
 1. Push the repository to GitHub and import it in Vercel (framework: Next.js; no build settings to change).
