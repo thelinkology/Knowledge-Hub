@@ -11,6 +11,7 @@ import { apiInviteUser } from '@/services/users'
 import { useUsersStore } from '@/stores/AdminStores'
 import { ROLES, roleLabel } from '@/@types/auth/Roles'
 import { InviteUserSchema, type InviteUserInput } from '@/@types/users/UserAccount'
+import { getErrorCode, tryGetErrorMessage } from '@/utils/errors'
 
 const FORM_ID = 'invite-user-form'
 const ROLE_OPTIONS = ROLES.map((role) => ({ value: role, label: roleLabel[role] }))
@@ -24,6 +25,7 @@ export default function InviteUserDialog({ onClose }: { onClose: () => void }) {
     })
     const {
         control,
+        setError,
         formState: { errors, isSubmitting },
     } = form
 
@@ -34,7 +36,15 @@ export default function InviteUserDialog({ onClose }: { onClose: () => void }) {
             await refresh()
             onClose()
         } catch (error) {
-            toastError('The invitation couldn’t be sent.', error)
+            // Show the reason itself (e.g. the email service refused), not a generic headline
+            if (getErrorCode(error) === 'ACCOUNT_EXISTS') {
+                setError('email', {
+                    message:
+                        'This email already has an account, maybe still waiting for its confirmation email. Close this and use the envelope button next to them to email a sign-in link.',
+                })
+                return
+            }
+            toastError(`The invitation couldn’t be sent: ${tryGetErrorMessage(error)}`, error)
         }
     }
 
