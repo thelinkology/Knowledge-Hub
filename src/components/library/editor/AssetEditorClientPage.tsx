@@ -21,8 +21,9 @@ import MarkdownBodyEditor from '@/components/shared/editor/MarkdownBodyEditor'
 import { AssetKindTag, PublishStatusTag } from '@/components/shared/KnowledgeTags'
 import AssetDetailsFields, { AssetCodeFields, AssetTitleFields } from './AssetDetailsFields'
 import AssetReader from '../reader/AssetReader'
+import DiagramEditor from './diagram/DiagramEditor'
 import { ASSET_FIELD_IDS, toFormData, toSaveInput } from './assetForm'
-import { DeleteIcon, EditIcon, ExpandIcon, PreviewIcon, SaveIcon } from '@/configs/icons.config'
+import { DeleteIcon, DiagramIcon, EditIcon, ExpandIcon, PreviewIcon, SaveIcon } from '@/configs/icons.config'
 import { apiDeleteAsset, apiSaveAsset } from '@/services/library'
 import { useAssetEditorStore } from '@/stores/LibraryStores'
 import { getAssetPath, libraryPath } from '@/configs/app.config'
@@ -82,7 +83,8 @@ function AssetEditor({ data }: { data: AssetEditorData }) {
     const { asset } = data
     const assetId = asset.id
     const setData = useAssetEditorStore(assetId, (s) => s.setData)
-    const [tab, setTab] = useState('write')
+    // A reference architecture opens on its diagram
+    const [tab, setTab] = useState(asset.kind === 'reference_architecture' ? 'diagram' : 'write')
     const [busy, setBusy] = useState(false)
     const [pendingStatus, setPendingStatus] = useState<PublishStatus | null>(null)
     const [confirmDelete, setConfirmDelete] = useState(false)
@@ -97,6 +99,9 @@ function AssetEditor({ data }: { data: AssetEditorData }) {
         formState: { isDirty, isSubmitting },
     } = form
     const values = useWatch({ control }) as AssetFormData
+
+    const isArchitecture = (values.kind ?? asset.kind) === 'reference_architecture'
+    const activeTab = tab === 'diagram' && !isArchitecture ? 'write' : tab
 
     usePageBreadcrumbs([
         { label: 'Library', href: libraryPath },
@@ -144,8 +149,10 @@ function AssetEditor({ data }: { data: AssetEditorData }) {
             new Promise<AssetFormData | null>((resolve) => {
                 void form.handleSubmit(
                     (formValues) => resolve(formValues),
-                    () => {
-                        setTab('write')
+                    (errors) => {
+                        // Only the diagram is wrong: show it (its problems are listed under the canvas)
+                        const diagramOnly = Object.keys(errors).every((key) => key === 'diagram')
+                        setTab(diagramOnly && form.getValues('kind') === 'reference_architecture' ? 'diagram' : 'write')
                         toastError('Some fields need attention — they’re highlighted in the form.')
                         resolve(null)
                     },
@@ -230,6 +237,7 @@ function AssetEditor({ data }: { data: AssetEditorData }) {
         clientId: values.clientId || null,
         clientName,
         productId: values.productId || null,
+        diagram: values.diagram ?? asset.diagram,
     }
 
     return (
@@ -306,17 +314,23 @@ function AssetEditor({ data }: { data: AssetEditorData }) {
                 }
             />
 
-            <Tabs value={tab} onChange={setTab}>
-                <Tabs.TabList className="mb-6">
-                    <Tabs.TabNav value="write" icon={<EditIcon />}>
-                        Write
-                    </Tabs.TabNav>
-                    <Tabs.TabNav value="preview" icon={<PreviewIcon />}>
-                        Preview
-                    </Tabs.TabNav>
-                </Tabs.TabList>
-                <Tabs.TabContent value="write">
-                    <Form id={FORM_ID} onSubmit={form.handleSubmit(save)} noValidate>
+            {/* One form around every tab, so Save submits whichever tab is open */}
+            <Form id={FORM_ID} onSubmit={form.handleSubmit(save)} noValidate>
+                <Tabs value={activeTab} onChange={setTab}>
+                    <Tabs.TabList className="mb-6">
+                        <Tabs.TabNav value="write" icon={<EditIcon />}>
+                            Write
+                        </Tabs.TabNav>
+                        {isArchitecture && (
+                            <Tabs.TabNav value="diagram" icon={<DiagramIcon />}>
+                                Architecture diagram
+                            </Tabs.TabNav>
+                        )}
+                        <Tabs.TabNav value="preview" icon={<PreviewIcon />}>
+                            Preview
+                        </Tabs.TabNav>
+                    </Tabs.TabList>
+                    <Tabs.TabContent value="write">
                         <div className="grid gap-6 lg:grid-cols-3">
                             <div className="min-w-0 space-y-6 lg:col-span-2">
                                 <Card>
@@ -349,12 +363,19 @@ function AssetEditor({ data }: { data: AssetEditorData }) {
                                 </Card>
                             </aside>
                         </div>
-                    </Form>
-                </Tabs.TabContent>
-                <Tabs.TabContent value="preview">
-                    <AssetReader asset={previewAsset} products={data.products} preview />
-                </Tabs.TabContent>
-            </Tabs>
+                    </Tabs.TabContent>
+                    {isArchitecture && (
+                        <Tabs.TabContent value="diagram">
+                            <Card>
+                                <DiagramEditor />
+                            </Card>
+                        </Tabs.TabContent>
+                    )}
+                    <Tabs.TabContent value="preview">
+                        <AssetReader asset={previewAsset} products={data.products} preview />
+                    </Tabs.TabContent>
+                </Tabs>
+            </Form>
 
             <ConfirmDialog
                 isOpen={!!pendingStatus}

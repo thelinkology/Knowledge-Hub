@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Alert from '@/components/ui/Alert'
 import Button from '@/components/ui/Button'
@@ -13,33 +13,25 @@ import EmptyState from '@/components/shared/EmptyState'
 import ErrorState from '@/components/shared/ErrorState'
 import Loading from '@/components/shared/Loading'
 import PageHeader from '@/components/shared/PageHeader'
-import { ArticleKindTag, ProductTag, PublishStatusTag } from '@/components/shared/KnowledgeTags'
+import { ProductTag, PublishStatusTag } from '@/components/shared/KnowledgeTags'
 import CollectionDialog from '@/components/knowledge/browse/CollectionDialog'
 import NewArticleDialog from '@/components/knowledge/browse/NewArticleDialog'
-import navigationIcon, {
-    AddIcon,
-    DeleteIcon,
-    EditIcon,
-    MoveDownIcon,
-    MoveUpIcon,
-    StartIcon,
-} from '@/configs/icons.config'
-import { getArticlePath, getClientPath, getCollectionPath, knowledgePath } from '@/configs/app.config'
-import { apiDeleteCollection, apiReorderCollection, type CollectionDetail } from '@/services/knowledge'
+import CollectionTree from './CollectionTree'
+import navigationIcon, { AddIcon, DeleteIcon, EditIcon, StartIcon } from '@/configs/icons.config'
+import { getArticlePath, getClientPath, knowledgePath } from '@/configs/app.config'
+import { apiArrangeCollection, apiDeleteCollection, type CollectionDetail } from '@/services/knowledge'
 import { useCollectionStore, useProductsStore } from '@/stores/AppStores'
 import useSession from '@/utils/hooks/useSession'
 import { usePageBreadcrumbs } from '@/utils/hooks/useBreadcrumbs'
-import useRecordRecentItem from '@/utils/hooks/useRecordRecentItem'
+import { applyArrangement, buildTree, flattenTree, type Placement } from '@/utils/articleTree'
 import { formatDate } from '@/utils/dates'
-import classNames from '@/utils/classNames'
 import type { ArticleSummary } from '@/@types/knowledge/Article'
-import type { Product } from '@/@types/products/Product'
 
 interface CollectionClientPageProps {
     collectionId: string
 }
 
-/** A collection (like a Microsoft Learn module): its summary and its articles in reading order */
+/** A collection (like a Microsoft Learn module): its summary and its table of contents (nested articles) */
 export default function CollectionClientPage({ collectionId }: CollectionClientPageProps) {
     const detail = useCollectionStore(collectionId, (s) => s.data)
     const error = useCollectionStore(collectionId, (s) => s.error)
@@ -49,16 +41,6 @@ export default function CollectionClientPage({ collectionId }: CollectionClientP
         { label: 'Knowledge', href: knowledgePath },
         { label: detail?.collection.title ?? 'Collection' },
     ])
-    useRecordRecentItem(
-        detail
-            ? {
-                  id: collectionId,
-                  kind: 'collection',
-                  title: detail.collection.title,
-                  href: getCollectionPath(collectionId),
-              }
-            : null,
-    )
 
     if (!detail)
         return error ? (
@@ -79,32 +61,31 @@ function CollectionView({ collectionId, detail }: { collectionId: string; detail
     const setData = useCollectionStore(collectionId, (s) => s.setData)
     const refresh = useCollectionStore(collectionId, (s) => s.refresh)
     const [editing, setEditing] = useState(false)
-    const [adding, setAdding] = useState(false)
+    /** The "New article" dialog: `parent` set = adding a sub-article */
+    const [adding, setAdding] = useState<{ parent: ArticleSummary | null } | null>(null)
     const [confirmDelete, setConfirmDelete] = useState(false)
     const [deleting, setDeleting] = useState(false)
-    const [reordering, setReordering] = useState(false)
+    const [arranging, setArranging] = useState(false)
+    const [announcement, setAnnouncement] = useState('')
 
     const { collection, articles } = detail
-    const first = articles[0]
+    const first = useMemo(() => flattenTree(buildTree(articles))[0]?.item, [articles])
 
-    /** Moves an article up (-1) or down (+1); shown at once, then saved and reloaded */
-    const move = async (index: number, delta: -1 | 1) => {
-        const target = index + delta
-        if (target < 0 || target >= articles.length) return
-        const reordered = [...articles]
-        ;[reordered[index], reordered[target]] = [reordered[target], reordered[index]]
-        setData({ ...detail, articles: reordered })
-        setReordering(true)
+    /** Shows a new arrangement at once, then saves it; rolls back (and says so) if it can't be saved */
+    const arrange = async (arrangement: Placement[], message: string) => {
+        const before = detail
+        setData({ ...detail, articles: applyArrangement(articles, arrangement) })
+        setArranging(true)
         try {
-            await apiReorderCollection(
-                collectionId,
-                reordered.map((a) => a.id),
-            )
+            await apiArrangeCollection(collectionId, arrangement)
+            setAnnouncement(message)
         } catch (e) {
-            toastError('The new order couldn’t be saved.', e)
+            setData(before)
+            setAnnouncement('The change couldn’t be saved, so it was undone.')
+            toastError('The table of contents couldn’t be saved, so the change was undone.', e)
         } finally {
             await refresh()
-            setReordering(false)
+            setArranging(false)
         }
     }
 
@@ -161,7 +142,7 @@ function CollectionView({ collectionId, detail }: { collectionId: string; detail
 
             {canManage && (
                 <div className="mb-4 flex flex-wrap gap-2">
-                    <Button size="sm" icon={<AddIcon />} onClick={() => setAdding(true)}>
+                    <Button size="sm" icon={<AddIcon />} onClick={() => setAdding({ parent: null })}>
                         Add article
                     </Button>
                     <Button size="sm" icon={<EditIcon />} onClick={() => setEditing(true)}>
@@ -188,12 +169,17 @@ function CollectionView({ collectionId, detail }: { collectionId: string; detail
                         title="No articles in this collection yet"
                         description={
                             canManage
-                                ? 'Add the first article. Articles are read in the order you set here.'
+                                ? 'Add the first article. Articles are read in the order you set here, and can have sub-articles.'
                                 : 'Its articles haven’t been published yet. Check back soon, or search for what you need.'
                         }
                         action={
                             canManage ? (
-                                <Button size="sm" variant="solid" icon={<AddIcon />} onClick={() => setAdding(true)}>
+                                <Button
+                                    size="sm"
+                                    variant="solid"
+                                    icon={<AddIcon />}
+                                    onClick={() => setAdding({ parent: null })}
+                                >
                                     Add article
                                 </Button>
                             ) : (
@@ -204,28 +190,27 @@ function CollectionView({ collectionId, detail }: { collectionId: string; detail
                         }
                     />
                 ) : (
-                    <ol
-                        aria-label="Articles in reading order"
-                        aria-busy={reordering}
-                        className="divide-y divide-gray-200 dark:divide-gray-700"
-                    >
-                        {articles.map((article, index) => (
-                            <CollectionArticleItem
-                                key={article.id}
-                                article={article}
-                                index={index}
-                                total={articles.length}
-                                products={products}
-                                canManage={canManage}
-                                disabled={reordering}
-                                onMove={(delta) => void move(index, delta)}
-                            />
-                        ))}
-                    </ol>
+                    <CollectionTree
+                        articles={articles}
+                        products={products}
+                        canManage={canManage}
+                        busy={arranging}
+                        onArrange={(arrangement, message) => void arrange(arrangement, message)}
+                        onAddChild={(parent) => setAdding({ parent })}
+                    />
                 )}
             </Card>
+            <p role="status" className="sr-only">
+                {announcement}
+            </p>
 
-            {adding && <NewArticleDialog collection={collection} onClose={() => setAdding(false)} />}
+            {adding && (
+                <NewArticleDialog
+                    collection={collection}
+                    parent={adding.parent ? { id: adding.parent.id, title: adding.parent.title } : null}
+                    onClose={() => setAdding(null)}
+                />
+            )}
             {editing && (
                 <CollectionDialog
                     collection={collection}
@@ -246,81 +231,9 @@ function CollectionView({ collectionId, detail }: { collectionId: string; detail
                 loading={deleting}
             >
                 The collection and its reading order are deleted. This can’t be undone. Its{' '}
-                {articleCount(articles.length)} are kept and can still be found, just no longer grouped.
+                {articleCount(articles.length)} are kept and can still be found, just no longer grouped (sub-articles
+                become separate articles).
             </ConfirmDialog>
         </div>
-    )
-}
-
-interface CollectionArticleItemProps {
-    article: ArticleSummary
-    index: number
-    total: number
-    products: Product[] | undefined
-    canManage: boolean
-    disabled: boolean
-    onMove: (delta: -1 | 1) => void
-}
-
-function CollectionArticleItem({
-    article,
-    index,
-    total,
-    products,
-    canManage,
-    disabled,
-    onMove,
-}: CollectionArticleItemProps) {
-    return (
-        <li className="flex gap-4 p-4 sm:p-5">
-            <span
-                aria-hidden
-                className={classNames(
-                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold tabular-nums',
-                    article.status === 'published'
-                        ? 'border-primary text-primary'
-                        : 'border-dashed border-gray-300 text-gray-500 dark:border-gray-600',
-                )}
-            >
-                {index + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                        href={getArticlePath(article.id)}
-                        className="font-semibold text-gray-900 hover:text-primary hover:underline dark:text-gray-100"
-                    >
-                        <span className="sr-only">{index + 1}. </span>
-                        {article.title}
-                    </Link>
-                    {article.status !== 'published' && <PublishStatusTag status={article.status} />}
-                </div>
-                {article.summary && <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{article.summary}</p>}
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <ArticleKindTag kind={article.kind} />
-                    <ProductTag productId={article.productId} products={products} />
-                </div>
-            </div>
-            {canManage && total > 1 && (
-                <div className="flex shrink-0 flex-col gap-1">
-                    <Button
-                        size="xs"
-                        variant="plain"
-                        icon={<MoveUpIcon />}
-                        aria-label={`Move “${article.title}” up`}
-                        disabled={disabled || index === 0}
-                        onClick={() => onMove(-1)}
-                    />
-                    <Button
-                        size="xs"
-                        variant="plain"
-                        icon={<MoveDownIcon />}
-                        aria-label={`Move “${article.title}” down`}
-                        disabled={disabled || index === total - 1}
-                        onClick={() => onMove(1)}
-                    />
-                </div>
-            )}
-        </li>
     )
 }

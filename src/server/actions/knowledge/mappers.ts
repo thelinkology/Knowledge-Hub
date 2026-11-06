@@ -6,7 +6,7 @@ import type { Database } from '@/@types/supabase/database.types'
 type Enums = Database['public']['Enums']
 
 export const ARTICLE_SUMMARY_SELECT =
-    'id, title, summary, kind, audience, status, collection_id, client_id, product_id, tags, position, version, updated_at, published_at, collection:collections(title), client:clients(name)'
+    'id, title, summary, kind, audience, status, collection_id, parent_id, client_id, product_id, tags, position, version, updated_at, published_at, collection:collections(title), client:clients(name)'
 
 export const ARTICLE_SELECT = `${ARTICLE_SUMMARY_SELECT}, body, created_at, creator:profiles!articles_created_by_fkey(display_name), updater:profiles!articles_updated_by_fkey(display_name)`
 
@@ -18,6 +18,7 @@ export interface ArticleSummaryRow {
     audience: Enums['audience']
     status: Enums['publish_status']
     collection_id: string | null
+    parent_id: string | null
     client_id: string | null
     product_id: string | null
     tags: string[]
@@ -45,6 +46,7 @@ export const mapArticleSummary = (row: ArticleSummaryRow): ArticleSummary => ({
     status: row.status,
     collectionId: row.collection_id,
     collectionTitle: row.collection?.title ?? null,
+    parentId: row.parent_id,
     clientId: row.client_id,
     clientName: row.client?.name ?? null,
     productId: row.product_id,

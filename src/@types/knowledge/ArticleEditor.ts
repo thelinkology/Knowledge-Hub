@@ -1,4 +1,4 @@
-import type { Article } from './Article'
+import type { Article, ArticleTreeEntry } from './Article'
 import type { ClientOption } from '@/@types/clients/Client'
 import type { Product } from '@/@types/products/Product'
 
@@ -6,6 +6,8 @@ import type { Product } from '@/@types/products/Product'
 export interface ArticleEditorData {
     article: Article
     collections: { id: string; title: string; clientId: string | null }[]
+    /** The table of contents of the article's collection (drafts included; empty without a collection) */
+    collectionArticles: ArticleTreeEntry[]
     clients: ClientOption[]
     products: Product[]
 }

@@ -14,6 +14,8 @@ export const ArticleFormSchema = z.object({
     kind: z.enum(ARTICLE_KINDS),
     audience: z.enum(AUDIENCES),
     collectionId: z.string(),
+    /** '' = top level of the collection */
+    parentId: z.string(),
     clientId: z.string(),
     productId: z.string(),
     tagsText: z

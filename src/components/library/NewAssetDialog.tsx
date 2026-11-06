@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Controller, FormProvider, useForm } from 'react-hook-form'
+import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
@@ -39,6 +39,7 @@ export default function NewAssetDialog({ onClose, defaultKind, client }: NewAsse
         control,
         formState: { errors, isSubmitting },
     } = form
+    const kind = useWatch({ control, name: 'kind' })
 
     const productOptions = [
         { value: '', label: 'No specific product' },
@@ -144,7 +145,10 @@ export default function NewAssetDialog({ onClose, defaultKind, client }: NewAsse
                         </FormItem>
                     )}
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                        It starts as a draft that only editors can see. You’ll add the instructions, link and code next.
+                        It starts as a draft that only editors can see.{' '}
+                        {kind === 'reference_architecture'
+                            ? 'The architecture diagram designer opens next: start from a template or draw it from scratch.'
+                            : 'You’ll add the instructions, link and code next.'}
                     </p>
                 </Form>
             </FormProvider>

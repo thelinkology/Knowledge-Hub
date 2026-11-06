@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ASSET_KINDS, CODE_LANGUAGES } from '@/@types/library/Asset'
+import { DiagramSchema } from '@/@types/library/Diagram'
 import { parseTagsText } from '@/utils/tags'
 
 /**
@@ -24,6 +25,8 @@ export const AssetFormSchema = z.object({
         .string()
         .max(1000)
         .refine((text) => parseTagsText(text).length <= 20, 'Use up to 20 tags'),
+    /** The architecture diagram designer's working copy (reference architectures) */
+    diagram: DiagramSchema,
 })
 export type AssetFormData = z.infer<typeof AssetFormSchema>
 

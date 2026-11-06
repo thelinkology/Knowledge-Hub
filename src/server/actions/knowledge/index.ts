@@ -16,6 +16,16 @@ import {
     type CollectionRow,
 } from './mappers'
 import { getPublishIssues } from '@/utils/articleValidation'
+import {
+    MAX_ARTICLE_DEPTH,
+    ancestorsOf,
+    attachToVisibleAncestors,
+    descendantIdsOf,
+    subtreeHeight,
+    validateArrangement,
+    type Placement,
+    type TreeLink,
+} from '@/utils/articleTree'
 import { getArticlePath, getAssetPath } from '@/configs/app.config'
 import { ConflictError, DataError, NotFoundError } from '@/@types/errors'
 import { hasPermission } from '@/@types/auth/Roles'
@@ -26,6 +36,7 @@ import type {
     ArticleRevision,
     ArticlesQuery,
     ArticleSummary,
+    ArticleTreeEntry,
     ArticleView,
     NewArticleInput,
     SaveArticleInput,
@@ -84,21 +95,51 @@ export async function getCollection(
         'load the collection',
     )
     if (!row || (!canEdit(user) && row.status !== 'published')) throw collectionNotFound()
-    let articles = supabaseAdmin()
-        .from('articles')
-        .select(ARTICLE_SUMMARY_SELECT)
-        .eq('collection_id', collectionId)
-        .order('position')
-        .order('created_at')
-    articles = canEdit(user) ? articles.neq('status', 'archived') : articles.eq('status', 'published')
-    const list = unwrap(await articles, 'load the articles').map((a) =>
-        mapArticleSummary(a as unknown as ArticleSummaryRow),
-    )
+    const list = await loadCollectionArticles(collectionId, canEdit(user))
     return {
         collection: { ...mapCollection(row as unknown as CollectionRow), articleCount: list.length },
         articles: list,
     }
 }
+
+/** Every article's parent link in a collection (hidden ones included), for tree checks */
+async function collectionLinks(collectionId: string): Promise<TreeLink[]> {
+    const rows = unwrap(
+        await supabaseAdmin().from('articles').select('id, parent_id').eq('collection_id', collectionId),
+        'load the articles',
+    )
+    return rows.map((row) => ({ id: row.id, parentId: row.parent_id }))
+}
+
+/**
+ * A collection's articles (editors: everything but archived; viewers: published only), each attached to
+ * its nearest visible ancestor, so a published sub-article of a draft still shows in the tree.
+ */
+async function loadCollectionArticles(collectionId: string, includeDrafts: boolean): Promise<ArticleSummary[]> {
+    let query = supabaseAdmin()
+        .from('articles')
+        .select(ARTICLE_SUMMARY_SELECT)
+        .eq('collection_id', collectionId)
+        .order('position')
+        .order('title')
+    query = includeDrafts ? query.neq('status', 'archived') : query.eq('status', 'published')
+    const [rows, links] = await Promise.all([query, collectionLinks(collectionId)])
+    const list = attachToVisibleAncestors(
+        unwrap(rows, 'load the articles').map((a) => mapArticleSummary(a as unknown as ArticleSummaryRow)),
+        links,
+    )
+    const titles = new Map(list.map((a) => [a.id, a.title]))
+    return list.map((a) => ({ ...a, parentTitle: a.parentId ? (titles.get(a.parentId) ?? null) : null }))
+}
+
+const toTreeEntry = (a: ArticleSummary): ArticleTreeEntry => ({
+    id: a.id,
+    title: a.title,
+    summary: a.summary,
+    status: a.status,
+    parentId: a.parentId,
+    position: a.position,
+})
 
 const collectionRow = async (input: CollectionInput) => {
     await assertClientExists(input.clientId)
@@ -144,22 +185,49 @@ export async function updateCollection(
 export async function deleteCollection(user: SessionUser, collectionId: string) {
     const existing = await findCollection(collectionId)
     if (!existing) throw collectionNotFound()
+    // The articles' collection becomes null (foreign key), which also makes them top-level (trigger)
     check(await supabaseAdmin().from('collections').delete().eq('id', collectionId), 'delete the collection')
     await recordAudit(user.id, 'collection.deleted', 'collection', collectionId, { title: existing.title })
 }
 
-/** Sets the reading order. Every id must be an article of this collection. */
-export async function reorderCollection(collectionId: string, ids: string[]) {
+/**
+ * Sets the table of contents: each article's parent and position among its siblings. Every id must be an
+ * article of this collection; articles left out (e.g. archived ones editors don't see) keep their place.
+ * The complete result is validated (no cycles, at most MAX_ARTICLE_DEPTH levels) before anything is
+ * written, and rows are updated top-down so the database trigger never sees a half-moved tree.
+ */
+export async function arrangeCollection(collectionId: string, items: Placement[]) {
     if (!(await findCollection(collectionId))) throw collectionNotFound()
     const rows = unwrap(
-        await supabaseAdmin().from('articles').select('id').eq('collection_id', collectionId),
+        await supabaseAdmin().from('articles').select('id, parent_id, position').eq('collection_id', collectionId),
         'load the articles',
     )
-    const mine = new Set(rows.map((r) => r.id))
-    if (ids.some((id) => !mine.has(id))) throw new DataError('Some of those articles aren’t in this collection.')
+    const current = new Map<string, Placement>(
+        rows.map((r) => [r.id, { id: r.id, parentId: r.parent_id, position: r.position }]),
+    )
+    const wanted = new Map<string, Placement>()
+    for (const item of items) {
+        if (!current.has(item.id)) throw new DataError('Some of those articles aren’t in this collection.')
+        if (wanted.has(item.id)) throw new DataError('An article appears more than once in the new order.')
+        wanted.set(item.id, item)
+    }
+    const merged = [...current.values()].map((existing) => wanted.get(existing.id) ?? existing)
+    const problem = validateArrangement(merged, [...current.keys()])
+    if (problem) throw new DataError(problem, 'INVALID_ARRANGEMENT')
+
+    const depth = new Map(merged.map((p) => [p.id, ancestorsOf(merged, p.id).length]))
+    const changed = items
+        .filter((item) => {
+            const before = current.get(item.id)
+            return before?.parentId !== item.parentId || before?.position !== item.position
+        })
+        .sort((a, b) => (depth.get(a.id) ?? 0) - (depth.get(b.id) ?? 0))
     const db = supabaseAdmin()
-    for (const [position, id] of ids.entries()) {
-        check(await db.from('articles').update({ position }).eq('id', id), 'save the order')
+    for (const item of changed) {
+        check(
+            await db.from('articles').update({ parent_id: item.parentId, position: item.position }).eq('id', item.id),
+            'save the table of contents',
+        )
     }
 }
 
@@ -183,7 +251,18 @@ export async function getArticles(user: SessionUser, query: ArticlesQuery): Prom
         const term = query.q.replace(/[%_,()\\]/g, ' ').trim()
         if (term) q = q.or(`title.ilike.%${term}%,summary.ilike.%${term}%`)
     }
-    return unwrap(await q, 'load articles').map((row) => mapArticleSummary(row as unknown as ArticleSummaryRow))
+    const list = unwrap(await q, 'load articles').map((row) => mapArticleSummary(row as unknown as ArticleSummaryRow))
+    return withParentTitles(user, list)
+}
+
+/** Fills `parentTitle` for sub-articles ("in <Parent>"); viewers only see published parents' titles */
+async function withParentTitles(user: SessionUser, list: ArticleSummary[]): Promise<ArticleSummary[]> {
+    const parentIds = [...new Set(list.map((a) => a.parentId).filter((id): id is string => !!id))]
+    if (!parentIds.length) return list.map((a) => ({ ...a, parentTitle: null }))
+    let query = supabaseAdmin().from('articles').select('id, title').in('id', parentIds)
+    query = canEdit(user) ? query.neq('status', 'archived') : query.eq('status', 'published')
+    const titles = new Map(unwrap(await query, 'load articles').map((row) => [row.id, row.title]))
+    return list.map((a) => ({ ...a, parentTitle: a.parentId ? (titles.get(a.parentId) ?? null) : null }))
 }
 
 async function loadArticle(articleId: string): Promise<Article | null> {
@@ -206,11 +285,7 @@ export async function getArticleView(user: SessionUser, articleId: string): Prom
     return {
         article,
         collection: collection
-            ? {
-                  id: collection.id,
-                  title: collection.title,
-                  articles: articles.map((a) => ({ id: a.id, title: a.title, status: a.status })),
-              }
+            ? { id: collection.id, title: collection.title, articles: articles.map(toTreeEntry) }
             : null,
     }
 }
@@ -219,7 +294,7 @@ export async function getArticleView(user: SessionUser, articleId: string): Prom
 export async function getArticleEditor(articleId: string): Promise<ArticleEditorData> {
     const article = await loadArticle(articleId)
     if (!article) throw notFound()
-    const [collections, clients, products] = await Promise.all([
+    const [collections, clients, products, collectionArticles] = await Promise.all([
         unwrap(
             await supabaseAdmin()
                 .from('collections')
@@ -231,28 +306,67 @@ export async function getArticleEditor(articleId: string): Promise<ArticleEditor
         ),
         getClientOptions(),
         getProducts(),
+        article.collectionId ? loadCollectionArticles(article.collectionId, true) : Promise.resolve([]),
     ])
     return {
         article,
         collections: collections.map((c) => ({ id: c.id, title: c.title, clientId: c.client_id })),
+        collectionArticles: collectionArticles.map(toTreeEntry),
         clients,
         products,
     }
 }
 
-async function nextPosition(collectionId: string | null) {
+/** After the last sibling (the collection's articles with the same parent) */
+async function nextPosition(collectionId: string | null, parentId: string | null) {
     if (!collectionId) return 0
+    let query = supabaseAdmin().from('articles').select('position').eq('collection_id', collectionId)
+    query = parentId ? query.eq('parent_id', parentId) : query.is('parent_id', null)
     const last = unwrapMaybe(
-        await supabaseAdmin()
-            .from('articles')
-            .select('position')
-            .eq('collection_id', collectionId)
-            .order('position', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
+        await query.order('position', { ascending: false }).limit(1).maybeSingle(),
         'place the article',
     )
     return (last?.position ?? -1) + 1
+}
+
+/**
+ * Checks a new parent: an article of the same collection, not the article itself or one of its
+ * sub-articles, and the article's subtree stays within MAX_ARTICLE_DEPTH levels (the database trigger
+ * checks again). `subtreeLinks`: the links of the collection the article is in now.
+ */
+async function checkParent(input: {
+    articleId: string | null
+    collectionId: string | null
+    parentId: string | null
+    subtreeLinks?: TreeLink[]
+}) {
+    const { articleId, collectionId, parentId } = input
+    if (!parentId) return
+    if (!collectionId) {
+        throw new DataError(
+            'Only articles in a collection can be sub-articles. Pick a collection, or choose no parent article.',
+            'PARENT_ELSEWHERE',
+        )
+    }
+    if (parentId === articleId) throw new DataError('An article can’t be its own parent.', 'ARTICLE_CYCLE')
+    const links = await collectionLinks(collectionId)
+    if (!links.some((link) => link.id === parentId)) {
+        throw new DataError(
+            'The parent article must be in the same collection. Pick a parent from that collection.',
+            'PARENT_ELSEWHERE',
+        )
+    }
+    const subtree = input.subtreeLinks ?? links
+    if (articleId && descendantIdsOf(subtree, articleId).includes(parentId)) {
+        throw new DataError('An article can’t sit under one of its own sub-articles.', 'ARTICLE_CYCLE')
+    }
+    const depth = ancestorsOf(links, parentId).length + 1 + (articleId ? subtreeHeight(subtree, articleId) : 0)
+    if (depth > MAX_ARTICLE_DEPTH) {
+        throw new DataError(
+            `Sub-articles can only be nested ${MAX_ARTICLE_DEPTH} levels deep. Pick a parent higher up.`,
+            'ARTICLE_TOO_DEEP',
+        )
+    }
 }
 
 /** Checks the pickers' ids: the collection, client and product must exist */
@@ -272,6 +386,7 @@ async function checkPlacement(input: {
 
 export async function createArticle(user: SessionUser, input: NewArticleInput): Promise<Article> {
     await checkPlacement(input)
+    await checkParent({ articleId: null, collectionId: input.collectionId, parentId: input.parentId })
     const db = supabaseAdmin()
     const inserted = unwrap(
         await db
@@ -280,9 +395,10 @@ export async function createArticle(user: SessionUser, input: NewArticleInput): 
                 title: input.title,
                 kind: input.kind,
                 collection_id: input.collectionId,
+                parent_id: input.parentId,
                 client_id: input.clientId,
                 product_id: input.productId,
-                position: await nextPosition(input.collectionId),
+                position: await nextPosition(input.collectionId, input.parentId),
                 created_by: user.id,
                 updated_by: user.id,
             })
@@ -322,8 +438,27 @@ export async function saveArticle(user: SessionUser, articleId: string, input: S
             )
         }
     }
+    if (input.expectedVersion !== null && input.expectedVersion !== existing.version) {
+        throw toAppError(new Error('ARTICLE_CHANGED'), 'save the article')
+    }
+
     const moved = input.collectionId !== existing.collectionId
-    const result = await supabaseAdmin().rpc('save_article', {
+    const reparented = moved || input.parentId !== existing.parentId
+    const oldLinks = existing.collectionId ? await collectionLinks(existing.collectionId) : []
+    if (reparented) {
+        await checkParent({
+            articleId,
+            collectionId: input.collectionId,
+            parentId: input.parentId,
+            subtreeLinks: oldLinks,
+        })
+    }
+    const position = reparented ? await nextPosition(input.collectionId, input.parentId) : null
+
+    // One transaction: save_article moves the sub-articles along when the collection changes (the tree is
+    // checked at commit; without a collection the sub-articles become top-level)
+    const db = supabaseAdmin()
+    const result = await db.rpc('save_article', {
         p_article_id: articleId,
         p_fields: {
             title: input.title,
@@ -332,6 +467,7 @@ export async function saveArticle(user: SessionUser, articleId: string, input: S
             kind: input.kind,
             audience: input.audience,
             collectionId: input.collectionId,
+            parentId: input.parentId,
             clientId: input.clientId,
             productId: input.productId,
             tags: input.tags,
@@ -340,14 +476,8 @@ export async function saveArticle(user: SessionUser, articleId: string, input: S
         p_expected_version: input.expectedVersion as number,
     })
     if (result.error) throw toAppError(result.error, 'save the article')
-    if (moved) {
-        check(
-            await supabaseAdmin()
-                .from('articles')
-                .update({ position: await nextPosition(input.collectionId) })
-                .eq('id', articleId),
-            'place the article',
-        )
+    if (position !== null) {
+        check(await db.from('articles').update({ position }).eq('id', articleId), 'place the article')
     }
     return getArticleEditor(articleId)
 }
@@ -424,6 +554,7 @@ export async function restoreArticleRevision(user: SessionUser, articleId: strin
         kind: article.kind,
         audience: article.audience,
         collectionId: article.collectionId,
+        parentId: article.parentId,
         clientId: article.clientId,
         productId: article.productId,
         tags: article.tags,

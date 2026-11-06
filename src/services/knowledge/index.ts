@@ -7,11 +7,15 @@ import type {
     ArticlesQuery,
     ArticleSummary,
     ArticleView,
-    NewArticleInput,
+    NewArticleRequest,
     SaveArticleInput,
 } from '@/@types/knowledge/Article'
 import type { ArticleEditorData } from '@/@types/knowledge/ArticleEditor'
-import type { CollectionInput, KnowledgeCollection } from '@/@types/knowledge/KnowledgeCollection'
+import type {
+    ArrangeCollectionInput,
+    CollectionInput,
+    KnowledgeCollection,
+} from '@/@types/knowledge/KnowledgeCollection'
 import type { SearchQuery, SearchResult } from '@/@types/knowledge/Search'
 import type { PublishStatus } from '@/@types/shared/PublishStatusOptions'
 
@@ -62,7 +66,7 @@ export const apiGetArticleView = async (articleId: string): Promise<ArticleView>
 export const useSWRArticleView = (articleId: string | null, config?: SWRConfiguration<ArticleView>) =>
     useSWR(articleId ? getArticleUrl(articleId) : null, () => apiGetArticleView(articleId!), config)
 
-export const apiCreateArticle = async (input: NewArticleInput) =>
+export const apiCreateArticle = async (input: NewArticleRequest) =>
     ensureArticle(await api.fetchJson<Article>({ method: 'post', url: '/articles', data: input }))
 
 export const getArticleEditorUrl = (articleId: string) => `/articles/${articleId}/editor`
@@ -152,8 +156,9 @@ export const apiUpdateCollection = async (collectionId: string, input: Collectio
 export const apiDeleteCollection = (collectionId: string) =>
     api.fetchJson<void>({ method: 'delete', url: getCollectionUrl(collectionId) })
 
-export const apiReorderCollection = (collectionId: string, ids: string[]) =>
-    api.fetchJson<void>({ method: 'put', url: `${getCollectionUrl(collectionId)}/order`, data: { ids } })
+/** Saves the table of contents (each article's parent and position among its siblings) */
+export const apiArrangeCollection = (collectionId: string, items: ArrangeCollectionInput['items']) =>
+    api.fetchJson<void>({ method: 'put', url: `${getCollectionUrl(collectionId)}/tree`, data: { items } })
 
 // ── Search ──
 

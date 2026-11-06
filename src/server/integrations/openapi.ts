@@ -66,9 +66,12 @@ const DEFINITIONS: JsonObject = {
             id: string(
                 'Id of the article or asset. Pass it to GetArticle (type "article") or GetAsset (type "asset").',
             ),
-            type: string('"article" (knowledge article) or "asset" (library asset: script, flow, architecture…).', {
-                enum: ['article', 'asset'],
-            }),
+            type: string(
+                '"article" (knowledge article) or "asset" (library asset: script, reference architecture, demo asset…).',
+                {
+                    enum: ['article', 'asset'],
+                },
+            ),
             title: string('Title.'),
             summary: string('One or two sentence summary.'),
             snippet: string('The passage that matched the query, Markdown, matched words in **bold**.'),
@@ -108,6 +111,36 @@ const DEFINITIONS: JsonObject = {
             updatedAt: string('Last updated (ISO 8601).', { format: 'date-time' }),
             url: string('Link to the article in Knowledge Hub. Cite it.'),
             content: string('The full article body in Markdown.'),
+            parent: nullableRef(
+                'ArticleRef',
+                'The article this one sits under in the table of contents; null at the top level. Call GetArticle ' +
+                    'with its id for the broader context.',
+            ),
+            children: {
+                type: 'array',
+                description:
+                    'Its sub-articles in reading order (may be empty). Call GetArticle with an id for the details.',
+                items: ref('ArticleChild'),
+            },
+        },
+    },
+    ArticleRef: {
+        type: 'object',
+        description: 'A related knowledge article.',
+        properties: {
+            id: string('Article id. Pass it to GetArticle.'),
+            title: string('Title.'),
+            url: string('Link to the article in Knowledge Hub.'),
+        },
+    },
+    ArticleChild: {
+        type: 'object',
+        description: 'A sub-article.',
+        properties: {
+            id: string('Article id. Pass it to GetArticle.'),
+            title: string('Title.'),
+            summary: string('Summary.'),
+            url: string('Link to the article in Knowledge Hub.'),
         },
     },
     Asset: {
@@ -126,6 +159,12 @@ const DEFINITIONS: JsonObject = {
             code: string('The script or code snippet itself (may be empty). Show it in a code block.'),
             codeLanguage: string('Language of `code` (sql, dax, m, python, powershell, json, yaml…), or empty.'),
             link: string('Where the asset lives (repository, SharePoint, demo tenant), or empty.'),
+            diagramMarkdown: string(
+                'For a reference architecture: its architecture diagram in Markdown — per view (scenario) the ' +
+                    'components grouped by type, the connections ("A → B (label)"), the numbered build sequence ' +
+                    'with build guidance, and notes. Empty when the asset has no diagram. Use it to explain how ' +
+                    'the solution fits together and in which order to build it.',
+            ),
         },
     },
     Client: {
@@ -280,8 +319,9 @@ export function buildOpenApiSpec(host: string): SwaggerDocument {
                     summary: 'Read a library asset',
                     description:
                         'Get a published library asset by id (from SearchKnowledge results of type "asset"): a reusable ' +
-                        'script, Power Automate flow, reference architecture, component, template or demo asset. ' +
-                        'Returns how to use it (Markdown), the code snippet if any, and where it lives.',
+                        'script, reference architecture, component, template or demo asset. Returns how to use it ' +
+                        '(Markdown), the code snippet if any, where it lives and, for a reference architecture, its ' +
+                        'architecture diagram as Markdown (components, connections and build sequence).',
                     parameters: [idParameter('assetId', 'The asset id from a SearchKnowledge result.')],
                     responses: {
                         200: { description: 'The asset.', schema: ref('Asset') },

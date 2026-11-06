@@ -21,10 +21,12 @@ export const NewArticleFormSchema = z.object({
 })
 export type NewArticleFormData = z.infer<typeof NewArticleFormSchema>
 
-export const toNewArticleInput = (values: NewArticleFormData): NewArticleInput => ({
+/** `parentId`: create a sub-article under it (only while the article goes in a collection) */
+export const toNewArticleInput = (values: NewArticleFormData, parentId: string | null = null): NewArticleInput => ({
     title: values.title.trim(),
     kind: values.kind,
     collectionId: values.collectionId || null,
+    parentId: values.collectionId ? parentId : null,
     clientId: values.clientId || null,
     productId: values.productId || null,
 })

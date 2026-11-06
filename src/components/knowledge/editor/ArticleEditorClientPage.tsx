@@ -30,6 +30,7 @@ import { useArticleEditorStore } from '@/stores/AppStores'
 import { getArticlePath, getCollectionPath, knowledgePath } from '@/configs/app.config'
 import { ArticleFormSchema, type ArticleFormData } from '@/@types/knowledge/forms/ArticleFormData'
 import { getPublishIssues } from '@/utils/articleValidation'
+import { ancestorsOf } from '@/utils/articleTree'
 import { getErrorCode, tryGetErrorMessage } from '@/utils/errors'
 import { usePageBreadcrumbs } from '@/utils/hooks/useBreadcrumbs'
 import useUnsavedChangesGuard from '@/utils/hooks/useUnsavedChangesGuard'
@@ -95,11 +96,18 @@ function ArticleEditor({ data }: { data: ArticleEditorData }) {
     } = form
     const values = useWatch({ control }) as ArticleFormData
 
+    const ancestors = useMemo(
+        () => ancestorsOf(data.collectionArticles, articleId),
+        [data.collectionArticles, articleId],
+    )
+    const childCount = data.collectionArticles.filter((a) => a.parentId === articleId).length
+
     usePageBreadcrumbs([
         { label: 'Knowledge', href: knowledgePath },
         ...(article.collectionId && article.collectionTitle
             ? [{ label: article.collectionTitle, href: getCollectionPath(article.collectionId) }]
             : []),
+        ...ancestors.map((a) => ({ label: a.title, href: getArticlePath(a.id) })),
         { label: article.title, href: getArticlePath(articleId) },
         { label: 'Edit' },
     ])
@@ -380,6 +388,8 @@ function ArticleEditor({ data }: { data: ArticleEditorData }) {
                 loading={busy}
             >
                 The article and all of its versions are deleted. This can’t be undone. (Archiving keeps it instead.)
+                {childCount > 0 &&
+                    ` Its ${childCount === 1 ? 'sub-article moves' : `${childCount} sub-articles move`} to the top level of the collection.`}
             </ConfirmDialog>
             <ConfirmDialog
                 isOpen={!!guard.pendingHref}

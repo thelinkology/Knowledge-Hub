@@ -40,7 +40,6 @@ import {
     TbFileText,
     TbFilter,
     TbFolders,
-    TbGitBranch,
     TbGripVertical,
     TbH2,
     TbH3,
@@ -96,7 +95,31 @@ import {
     TbKeyOff,
     TbRobot,
     TbTerminal2,
+    TbArrowLeft,
+    TbBolt,
+    TbCloud,
+    TbCube,
+    TbDatabase,
+    TbFileSpreadsheet,
+    TbFocusCentered,
+    TbHandClick,
+    TbHierarchy,
+    TbNote,
+    TbReportAnalytics,
+    TbServer2,
+    TbTableDown,
+    TbTopologyStar3,
+    TbTransfer,
+    TbUser,
+    TbIndentIncrease,
+    TbIndentDecrease,
+    TbChevronsLeft,
+    TbChevronsRight,
+    TbListTree,
+    TbCornerDownRight,
+    TbFilePlus,
 } from 'react-icons/tb'
+import type { IconType } from 'react-icons'
 
 // ── Actions ──
 export const AddIcon = TbPlus
@@ -138,6 +161,15 @@ export const AddUserIcon = TbUserPlus
 export const GenerateIcon = TbSparkles
 export const TagIcon = TbTag
 export const HistoryIcon = TbHistory
+
+// ── Table of contents (sub-articles) ──
+export const IndentIcon = TbIndentIncrease
+export const OutdentIcon = TbIndentDecrease
+export const HideTocIcon = TbChevronsLeft
+export const ShowTocIcon = TbChevronsRight
+export const TocIcon = TbListTree
+export const SubArticleIcon = TbCornerDownRight
+export const AddSubArticleIcon = TbFilePlus
 
 // ── Status ──
 export const SuccessIcon = TbCircleCheck
@@ -212,7 +244,6 @@ const navigationIcon = {
     bestPractice: <TbCircleCheck />,
     // Asset kinds (Asset.assetKindIcon)
     script: <TbCode />,
-    flow: <TbGitBranch />,
     architecture: <TbSitemap />,
     demo: <TbPresentation />,
     component: <TbPuzzle />,
@@ -222,3 +253,30 @@ const navigationIcon = {
 export type NavigationIconKey = keyof typeof navigationIcon
 
 export default navigationIcon as Record<NavigationIconKey, ReactNode>
+
+// ── Architecture diagrams (library/Diagram: component kinds and the designer) ──
+export const DiagramIcon = TbTopologyStar3
+export const NoteIcon = TbNote
+export const MoveLeftIcon = TbArrowLeft
+export const MoveRightIcon = TbArrowRight
+export const FitViewIcon = TbFocusCentered
+
+const diagramIcons = {
+    source: TbServer2,
+    database: TbDatabase,
+    cube: TbCube,
+    dimension: TbHierarchy,
+    procedure: TbBolt,
+    fact: TbTableDown,
+    report: TbReportAnalytics,
+    person: TbUser,
+    action: TbHandClick,
+    pipeline: TbTransfer,
+    service: TbCloud,
+    file: TbFileSpreadsheet,
+} satisfies Record<string, IconType>
+
+export type DiagramIconKey = keyof typeof diagramIcons
+
+/** Icon components for diagram component kinds (Diagram.diagramKindIcon) */
+export const diagramIcon: Record<DiagramIconKey, IconType> = diagramIcons

@@ -20,6 +20,24 @@ const KNOWN_ERRORS: Record<string, () => AppError> = {
             'Someone else saved this article while you were editing. Copy your changes, reload the page, and apply them again.',
             'ARTICLE_CHANGED',
         ),
+    // Sub-articles (public.check_article_parent)
+    PARENT_NOT_FOUND: () =>
+        new DataError('The parent article no longer exists. Reload the page and pick another one.', 'PARENT_NOT_FOUND'),
+    PARENT_ELSEWHERE: () =>
+        new DataError(
+            'A sub-article must be in the same collection as its parent. Pick a parent from that collection, or none.',
+            'PARENT_ELSEWHERE',
+        ),
+    ARTICLE_CYCLE: () =>
+        new DataError(
+            'An article can’t sit under itself or one of its own sub-articles. Pick a different parent.',
+            'ARTICLE_CYCLE',
+        ),
+    ARTICLE_TOO_DEEP: () =>
+        new DataError(
+            'Sub-articles can only be nested 5 levels deep. Pick a parent higher up in the table of contents.',
+            'ARTICLE_TOO_DEEP',
+        ),
 }
 
 export function toAppError(error: PostgrestError | Error, context: string): AppError {

@@ -25,6 +25,10 @@ export interface ArticleSummary {
     status: PublishStatus
     collectionId: string | null
     collectionTitle: string | null
+    /** The article this one sits under (a sub-article), in the same collection; null = top level */
+    parentId: string | null
+    /** The parent's title, on lists that show it (browse); undefined elsewhere */
+    parentTitle?: string | null
     clientId: string | null
     clientName: string | null
     productId: string | null
@@ -42,10 +46,23 @@ export interface Article extends ArticleSummary {
     createdAt: Date
 }
 
-/** The reader view: the article plus its neighbours in the collection (Microsoft Learn-style unit navigation) */
+/** One article in a collection's table of contents (utils/articleTree builds the tree) */
+export interface ArticleTreeEntry {
+    id: string
+    title: string
+    summary: string
+    status: PublishStatus
+    parentId: string | null
+    position: number
+}
+
+/**
+ * The reader view: the article plus its collection's table of contents (Microsoft Learn-style). Viewers
+ * only get published entries, each attached to its nearest published ancestor.
+ */
 export interface ArticleView {
     article: Article
-    collection: { id: string; title: string; articles: { id: string; title: string; status: PublishStatus }[] } | null
+    collection: { id: string; title: string; articles: ArticleTreeEntry[] } | null
 }
 
 export interface ArticleRevision {
@@ -63,10 +80,14 @@ export const NewArticleSchema = z.object({
     title: z.string().trim().min(2, 'Give the article a title').max(200),
     kind: z.enum(ARTICLE_KINDS).default('concept'),
     collectionId: z.string().uuid().nullable().default(null),
+    /** Creates a sub-article under this article (which must be in the same collection) */
+    parentId: z.string().uuid().nullable().default(null),
     clientId: z.string().uuid().nullable().default(null),
     productId: z.string().uuid().nullable().default(null),
 })
 export type NewArticleInput = z.infer<typeof NewArticleSchema>
+/** What the browser sends (defaulted fields may be left out) */
+export type NewArticleRequest = z.input<typeof NewArticleSchema>
 
 /** PUT /api/articles/[articleId] — the editor's save */
 export const SaveArticleSchema = z.object({
@@ -76,6 +97,8 @@ export const SaveArticleSchema = z.object({
     kind: z.enum(ARTICLE_KINDS),
     audience: z.enum(AUDIENCES),
     collectionId: z.string().uuid().nullable(),
+    /** The parent article (same collection); null = top level of the collection */
+    parentId: z.string().uuid().nullable().default(null),
     clientId: z.string().uuid().nullable(),
     productId: z.string().uuid().nullable(),
     tags: TagsSchema.default([]),

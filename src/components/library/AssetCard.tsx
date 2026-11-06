@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { ProductTag, PublishStatusTag, ScopeLabel } from '@/components/shared/KnowledgeTags'
-import navigationIcon, { CodeIcon, LinkIcon } from '@/configs/icons.config'
+import navigationIcon, { CodeIcon, DiagramIcon, LinkIcon } from '@/configs/icons.config'
 import { getAssetPath } from '@/configs/app.config'
 import { assetKindIcon, assetKindLabel, type AssetSummary } from '@/@types/library/Asset'
 import { formatDate } from '@/utils/dates'
+import { formatDiagramSummary } from '@/utils/diagram'
 import classNames from '@/utils/classNames'
 import type { Product } from '@/@types/products/Product'
 
@@ -47,6 +48,11 @@ export default function AssetCard({ asset, products, showScope = true, className
             </p>
             <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-4 text-xs text-gray-500 dark:text-gray-400">
                 <ProductTag productId={asset.productId} products={products} />
+                {asset.kind === 'reference_architecture' && asset.diagramSummary && (
+                    <span className="inline-flex items-center gap-1">
+                        <DiagramIcon aria-hidden /> {formatDiagramSummary(asset.diagramSummary)}
+                    </span>
+                )}
                 {asset.hasCode && (
                     <span className="inline-flex items-center gap-1">
                         <CodeIcon aria-hidden /> Includes code

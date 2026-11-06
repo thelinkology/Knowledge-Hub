@@ -72,8 +72,8 @@ export default function KnowledgeBrowseClientPage() {
                         </div>
                         <h1 className="text-2xl md:text-4xl">Find what the team already knows</h1>
                         <p className="mt-2 text-gray-600 dark:text-gray-300">
-                            Articles, how-to guides and best practices, plus scripts, flows and reference architectures
-                            from the library.
+                            Articles, how-to guides and best practices, plus scripts and reference architectures from
+                            the library.
                         </p>
                     </div>
                     {canManage && (

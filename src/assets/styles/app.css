@@ -14,10 +14,12 @@
 /* Knowledge content: reader + editor (shared/MarkdownContent, shared/editor) and product colours */
 @import './knowledge/_content.css';
 @import './knowledge/_products.css';
+@import './knowledge/_diagram.css';
 
 /* Motion — every animation honours prefers-reduced-motion */
 @import './others/_animations.css';
 
 /* Third-party */
 @import 'simplebar-react/dist/simplebar.min.css';
+@import '@xyflow/react/dist/style.css';
 @import './vendors/_simple-bar.css';

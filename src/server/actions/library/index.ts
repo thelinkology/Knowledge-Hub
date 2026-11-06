@@ -13,6 +13,8 @@ import {
     type AssetSummaryRow,
 } from './mappers'
 import { getPublishIssues } from '@/utils/articleValidation'
+import { summarizeDiagram } from '@/utils/diagram'
+import { parseDiagram, type DiagramSummary } from '@/@types/library/Diagram'
 import { ConflictError, DataError, NotFoundError } from '@/@types/errors'
 import { hasPermission } from '@/@types/auth/Roles'
 import type { SessionUser } from '@/@types/auth/SessionUser'
@@ -20,8 +22,8 @@ import type { Asset, AssetsQuery, AssetSummary, NewAssetInput, SaveAssetInput } 
 import type { AssetEditorData } from '@/@types/library/AssetEditor'
 
 /*
- * The library: reusable assets (scripts, flows, reference architectures, demo assets, components,
- * templates). Viewers only ever get published assets; editors also see drafts (and archived ones when
+ * The library: reusable assets (scripts, reference architectures with their diagrams, demo assets,
+ * components, templates). Viewers only ever get published assets; editors also see drafts (and archived ones when
  * they ask for them). Writes are made by editors (the routes check `knowledge.manage`) after the checks here.
  */
 
@@ -47,6 +49,33 @@ async function idsWithCode(ids: string[]): Promise<Set<string>> {
     return new Set(results.flat().map((r) => r.id))
 }
 
+/**
+ * "N views · M components" for the reference architectures among these assets. Only their diagrams are
+ * loaded (in id batches), and only as many as one library page shows.
+ */
+async function diagramSummaries(ids: string[]): Promise<Map<string, DiagramSummary>> {
+    const batches: string[][] = []
+    for (let i = 0; i < ids.length; i += ID_BATCH) batches.push(ids.slice(i, i + ID_BATCH))
+    const results = await Promise.all(
+        batches.map(async (batch) =>
+            unwrap(
+                await supabaseAdmin()
+                    .from('library_assets')
+                    .select('id, diagram')
+                    .in('id', batch)
+                    .eq('kind', 'reference_architecture'),
+                'load the library',
+            ),
+        ),
+    )
+    const summaries = new Map<string, DiagramSummary>()
+    for (const row of results.flat()) {
+        const summary = summarizeDiagram(parseDiagram(row.diagram))
+        if (summary) summaries.set(row.id, summary)
+    }
+    return summaries
+}
+
 export async function getAssets(user: SessionUser, query: AssetsQuery): Promise<AssetSummary[]> {
     let q = supabaseAdmin()
         .from('library_assets')
@@ -64,8 +93,11 @@ export async function getAssets(user: SessionUser, query: AssetsQuery): Promise<
         if (term) q = q.or(`title.ilike.%${term}%,summary.ilike.%${term}%`)
     }
     const rows = unwrap(await q, 'load the library') as unknown as AssetSummaryRow[]
-    const withCode = await idsWithCode(rows.map((r) => r.id))
-    return rows.map((row) => mapAssetSummary(row, withCode.has(row.id)))
+    const [withCode, diagrams] = await Promise.all([
+        idsWithCode(rows.map((r) => r.id)),
+        diagramSummaries(rows.filter((r) => r.kind === 'reference_architecture').map((r) => r.id)),
+    ])
+    return rows.map((row) => mapAssetSummary(row, withCode.has(row.id), diagrams.get(row.id) ?? null))
 }
 
 async function loadAsset(assetId: string): Promise<Asset | null> {
@@ -152,6 +184,7 @@ export async function saveAsset(user: SessionUser, assetId: string, input: SaveA
                 client_id: input.clientId,
                 product_id: input.productId,
                 tags: input.tags,
+                diagram: input.diagram,
                 status: input.status,
                 updated_by: user.id,
             })

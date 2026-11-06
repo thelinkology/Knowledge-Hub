@@ -17,6 +17,6 @@
     }
 
     .side-nav-bg {
-        @apply ltr:border-r rtl:border-l bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700;
+        @apply ltr:border-r rtl:border-l bg-gray-50 border-gray-200 dark:bg-gray-950 dark:border-gray-800;
     }
 }

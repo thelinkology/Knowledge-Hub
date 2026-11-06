@@ -34,7 +34,7 @@ export default function PostLoginLayout({ children }: ProviderProps) {
             <div className="app-layout-collapsible-side flex flex-auto flex-col">
                 <div className="flex min-w-0 flex-auto">
                     <SideNav />
-                    <div className="relative flex min-h-screen w-full min-w-0 flex-auto flex-col border-l border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
+                    <div className="relative flex min-h-screen w-full min-w-0 flex-auto flex-col bg-white dark:bg-gray-900">
                         <Header
                             headerStart={
                                 <>

@@ -20,6 +20,7 @@ export const toFormData = (asset: Asset): AssetFormData => ({
     clientId: asset.clientId ?? '',
     productId: asset.productId ?? '',
     tagsText: tagsToText(asset.tags),
+    diagram: asset.diagram,
 })
 
 export const toSaveInput = (values: AssetFormData, status: PublishStatus): SaveAssetInput => ({
@@ -33,5 +34,6 @@ export const toSaveInput = (values: AssetFormData, status: PublishStatus): SaveA
     clientId: values.clientId || null,
     productId: values.productId || null,
     tags: parseTagsText(values.tagsText),
+    diagram: values.diagram,
     status,
 })

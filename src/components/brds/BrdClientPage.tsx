@@ -7,12 +7,11 @@ import ErrorState from '@/components/shared/ErrorState'
 import Loading from '@/components/shared/Loading'
 import BrdDocument from './BrdDocument'
 import { CopyIcon, DownloadIcon, EditIcon, PrintIcon } from '@/configs/icons.config'
-import { brdsPath, getBrdEditPath, getBrdPath, getClientPath } from '@/configs/app.config'
+import { brdsPath, getBrdEditPath, getClientPath } from '@/configs/app.config'
 import { useBrdStore } from '@/stores/BrdStores'
 import { brdFileName, composeBrdMarkdown } from '@/utils/brd'
 import { usePageBreadcrumbs } from '@/utils/hooks/useBreadcrumbs'
-import useRecordRecentItem from '@/utils/hooks/useRecordRecentItem'
-import { brdAudienceLabel, type Brd } from '@/@types/brds/Brd'
+import type { Brd } from '@/@types/brds/Brd'
 
 interface BrdClientPageProps {
     brdId: string
@@ -32,17 +31,6 @@ export default function BrdClientPage({ brdId }: BrdClientPageProps) {
         ...(brd ? [{ label: brd.clientName, href: getClientPath(brd.clientId, 'brds') }] : []),
         { label: brd?.title ?? 'BRD' },
     ])
-    useRecordRecentItem(
-        brd
-            ? {
-                  id: brdId,
-                  kind: 'brd',
-                  title: brd.title,
-                  subtitle: `${brd.clientName} · ${brdAudienceLabel[brd.audience]}`,
-                  href: getBrdPath(brdId),
-              }
-            : null,
-    )
 
     if (!brd)
         return error ? (

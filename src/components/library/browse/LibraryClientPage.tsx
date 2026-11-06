@@ -89,7 +89,7 @@ function LibraryFilters() {
     )
 }
 
-/** The library: reusable scripts, flows, reference architectures, demo assets, components and templates */
+/** The library: reusable scripts, reference architectures, demo assets, components and templates */
 export default function LibraryClientPage() {
     usePageBreadcrumbs([{ label: 'Home', href: homePath }, { label: 'Library' }])
     const { can } = useSession()
@@ -137,8 +137,8 @@ export default function LibraryClientPage() {
                 title={query.kind ? `No ${kindLabel} yet` : 'The library is empty'}
                 description={
                     canManage
-                        ? 'Add the scripts, flows, reference architectures and demo assets your team reuses, so the next delivery starts from what already works.'
-                        : 'Editors add reusable scripts, flows, reference architectures and demo assets here. Check back soon, or search the knowledge base meanwhile.'
+                        ? 'Add the scripts, reference architectures and demo assets your team reuses, so the next delivery starts from what already works.'
+                        : 'Editors add reusable scripts, reference architectures and demo assets here. Check back soon, or search the knowledge base meanwhile.'
                 }
                 action={
                     canManage ? (
@@ -156,7 +156,7 @@ export default function LibraryClientPage() {
             <PageHeader
                 eyebrow="Library"
                 title="Reusable assets"
-                description="Sample scripts and flows for Acterys, BPP and Fabric, reference architectures, demo assets, components and templates — ready to reuse on the next delivery."
+                description="Sample scripts for Acterys, BPP and Fabric, reference architectures, demo assets, components and templates — ready to reuse on the next delivery."
                 actions={
                     canManage && (
                         <Button variant="solid" size="sm" icon={<AddIcon />} onClick={() => setCreating(true)}>

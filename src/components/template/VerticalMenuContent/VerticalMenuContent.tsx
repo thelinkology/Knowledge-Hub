@@ -1,13 +1,15 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import Menu from '@/components/ui/Menu'
 import MenuGroup from '@/components/ui/Menu/MenuGroup'
 import MenuItem from '@/components/ui/Menu/MenuItem'
 import Tooltip from '@/components/ui/Tooltip'
-import RecentItemsMenu from './RecentItemsMenu'
-import navigationIcon from '@/configs/icons.config'
+import navigationIcon, { ExpandIcon } from '@/configs/icons.config'
 import { NAV_ITEM_TYPE_TITLE } from '@/constants/navigation.constant'
+import { useNavSectionsStore } from '@/stores/NavSectionsStore'
+import classNames from '@/utils/classNames'
 import type { Direction } from '@/@types/theme'
 import type { NavigationTree } from '@/@types/navigation'
 
@@ -20,8 +22,8 @@ export interface VerticalMenuContentProps {
 }
 
 /**
- * Side-navigation menu in titled sections, with "Recently viewed" at the end of the workspace.
- * Collapsed: icons only, with the title as a tooltip (section titles and recent items hidden).
+ * Side-navigation menu in titled sections. Each section title collapses/expands its items (remembered in
+ * this browser). Collapsed side nav: icons only, with the title as a tooltip, and every section open.
  */
 export default function VerticalMenuContent({
     collapsed,
@@ -30,6 +32,14 @@ export default function VerticalMenuContent({
     direction = 'ltr',
     onMenuItemClick,
 }: VerticalMenuContentProps) {
+    const collapsedSections = useNavSectionsStore((s) => s.collapsed)
+    const toggleSection = useNavSectionsStore((s) => s.toggle)
+
+    // Load the saved open/closed sections after mount (the server renders them all open)
+    useEffect(() => {
+        void useNavSectionsStore.persist.rehydrate()
+    }, [])
+
     const renderItem = (nav: NavigationTree) => {
         const link = (
             <Link href={nav.path} className="flex h-full w-full items-center gap-2" onClick={onMenuItemClick}>
@@ -50,18 +60,41 @@ export default function VerticalMenuContent({
         )
     }
 
+    const renderSection = (nav: NavigationTree) => {
+        if (collapsed) {
+            return (
+                <MenuGroup key={nav.key} label={null}>
+                    {nav.subMenu.map(renderItem)}
+                </MenuGroup>
+            )
+        }
+        const closed = !!collapsedSections[nav.key]
+        const listId = `nav-section-${nav.key}`
+        return (
+            <div key={nav.key}>
+                <button
+                    type="button"
+                    onClick={() => toggleSection(nav.key)}
+                    aria-expanded={!closed}
+                    aria-controls={listId}
+                    className="menu-title menu-title-light flex w-full items-center justify-between rounded-lg text-xs tracking-wide hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                >
+                    <span>{nav.title}</span>
+                    <ExpandIcon
+                        aria-hidden
+                        className={classNames('text-base transition-transform', closed && '-rotate-90')}
+                    />
+                </button>
+                <div id={listId} hidden={closed}>
+                    <MenuGroup label={null}>{nav.subMenu.map(renderItem)}</MenuGroup>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <Menu className="px-4 pb-4" sideCollapsed={collapsed} defaultActiveKeys={[routeKey]}>
-            {navigationTree.map((nav) =>
-                nav.type === NAV_ITEM_TYPE_TITLE ? (
-                    <MenuGroup key={nav.key} label={nav.title}>
-                        {nav.subMenu.map(renderItem)}
-                        {nav.key === 'workspace' && !collapsed && <RecentItemsMenu onMenuItemClick={onMenuItemClick} />}
-                    </MenuGroup>
-                ) : (
-                    renderItem(nav)
-                ),
-            )}
+            {navigationTree.map((nav) => (nav.type === NAV_ITEM_TYPE_TITLE ? renderSection(nav) : renderItem(nav)))}
         </Menu>
     )
 }

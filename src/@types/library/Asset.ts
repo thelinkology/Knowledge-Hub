@@ -1,15 +1,15 @@
 import { z } from 'zod'
 import { TagsSchema } from '@/@types/knowledge/Article'
 import { PUBLISH_STATUSES, type PublishStatus } from '@/@types/shared/PublishStatusOptions'
+import { DiagramSchema, emptyDiagram, type Diagram, type DiagramSummary } from './Diagram'
 import type { NavigationIconKey } from '@/configs/icons.config'
 
 /** What a library item is. Reference architectures and demo assets feed straight into BRDs. */
-export const ASSET_KINDS = ['script', 'flow', 'reference_architecture', 'demo_asset', 'component', 'template'] as const
+export const ASSET_KINDS = ['script', 'reference_architecture', 'demo_asset', 'component', 'template'] as const
 export type AssetKind = (typeof ASSET_KINDS)[number]
 
 export const assetKindLabel: Record<AssetKind, string> = {
     script: 'Script',
-    flow: 'Flow',
     reference_architecture: 'Reference architecture',
     demo_asset: 'Demo asset',
     component: 'Component',
@@ -18,7 +18,6 @@ export const assetKindLabel: Record<AssetKind, string> = {
 
 export const assetKindPlural: Record<AssetKind, string> = {
     script: 'Scripts',
-    flow: 'Flows',
     reference_architecture: 'Reference architectures',
     demo_asset: 'Demo assets',
     component: 'Components',
@@ -27,7 +26,6 @@ export const assetKindPlural: Record<AssetKind, string> = {
 
 export const assetKindIcon: Record<AssetKind, NavigationIconKey> = {
     script: 'script',
-    flow: 'flow',
     reference_architecture: 'architecture',
     demo_asset: 'demo',
     component: 'component',
@@ -72,6 +70,8 @@ export interface AssetSummary {
     productId: string | null
     tags: string[]
     hasCode: boolean
+    /** Views and components of a reference architecture's diagram; null when it has none */
+    diagramSummary: DiagramSummary | null
     updatedAt: Date
 }
 
@@ -79,6 +79,8 @@ export interface Asset extends AssetSummary {
     body: string
     code: string
     codeLanguage: string
+    /** The architecture diagram (reference architectures; empty for other kinds) */
+    diagram: Diagram
     createdByName: string | null
     updatedByName: string | null
     createdAt: Date
@@ -110,6 +112,7 @@ export const SaveAssetSchema = z.object({
     clientId: z.string().uuid().nullable(),
     productId: z.string().uuid().nullable(),
     tags: TagsSchema.default([]),
+    diagram: DiagramSchema.default(emptyDiagram),
     status: z.enum(PUBLISH_STATUSES),
 })
 export type SaveAssetInput = z.infer<typeof SaveAssetSchema>

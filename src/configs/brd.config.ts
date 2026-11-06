@@ -53,6 +53,6 @@ export const BRD_SIGN_OFF_ROLES = ['Client sponsor', 'Client project lead', 'Del
 
 /** Library assets that feed BRDs, and how many of each kind a BRD links at most */
 export const BRD_DESIGN_ASSET_KINDS: AssetKind[] = ['reference_architecture', 'demo_asset']
-export const BRD_BUILD_ASSET_KINDS: AssetKind[] = ['script', 'flow', 'component', 'template']
+export const BRD_BUILD_ASSET_KINDS: AssetKind[] = ['script', 'component', 'template']
 export const BRD_ASSETS_PER_KIND = 8
 export const BRD_ARTICLE_LIMIT = 20

@@ -7,6 +7,8 @@ import { NotFoundError } from '@/@types/errors'
 import { getArticlePath, getAssetPath } from '@/configs/app.config'
 import { absolutizeMarkdownLinks } from '@/utils/apiKeys'
 import { isUuid } from '@/utils/ids'
+import { diagramToMarkdown } from '@/utils/diagram'
+import { parseDiagram } from '@/@types/library/Diagram'
 import type {
     AgentArticle,
     AgentAsset,
@@ -121,14 +123,38 @@ export async function agentGetArticle(agent: AgentContext, articleId: string, or
     const row = unwrapMaybe(
         await supabaseAdmin()
             .from('articles')
-            .select('id, title, summary, kind, audience, client_id, product_id, tags, updated_at, body')
+            .select('id, title, summary, kind, audience, client_id, product_id, tags, updated_at, body, parent_id')
             .eq('id', articleId)
             .eq('status', 'published')
             .maybeSingle(),
         'load the article',
     )
     if (!row || !inScope(agent, row.client_id)) throw articleNotFound()
-    const [clients, products] = await Promise.all([clientRefs([row.client_id]), productRefs()])
+    // Its place in the table of contents: the parent and the sub-articles (published and in scope only)
+    const db = supabaseAdmin()
+    const [clients, products, parentRow, childRows] = await Promise.all([
+        clientRefs([row.client_id]),
+        productRefs(),
+        row.parent_id
+            ? db
+                  .from('articles')
+                  .select('id, title, client_id')
+                  .eq('id', row.parent_id)
+                  .eq('status', 'published')
+                  .maybeSingle()
+                  .then((result) => unwrapMaybe(result, 'load the article'))
+            : null,
+        db
+            .from('articles')
+            .select('id, title, summary, client_id')
+            .eq('parent_id', row.id)
+            .eq('status', 'published')
+            .order('position')
+            .order('title')
+            .limit(100)
+            .then((result) => unwrap(result, 'load the article')),
+    ])
+    const parent = parentRow && inScope(agent, parentRow.client_id) ? parentRow : null
     return {
         id: row.id,
         title: row.title,
@@ -141,6 +167,15 @@ export async function agentGetArticle(agent: AgentContext, articleId: string, or
         updatedAt: new Date(row.updated_at).toISOString(),
         url: `${origin}${getArticlePath(row.id)}`,
         content: absolutizeMarkdownLinks(row.body, origin),
+        parent: parent ? { id: parent.id, title: parent.title, url: `${origin}${getArticlePath(parent.id)}` } : null,
+        children: childRows
+            .filter((child) => inScope(agent, child.client_id))
+            .map((child) => ({
+                id: child.id,
+                title: child.title,
+                summary: child.summary,
+                url: `${origin}${getArticlePath(child.id)}`,
+            })),
     }
 }
 
@@ -148,7 +183,9 @@ export async function agentGetAsset(agent: AgentContext, assetId: string, origin
     const row = unwrapMaybe(
         await supabaseAdmin()
             .from('library_assets')
-            .select('id, title, summary, kind, client_id, product_id, tags, updated_at, body, url, code, code_language')
+            .select(
+                'id, title, summary, kind, client_id, product_id, tags, updated_at, body, url, code, code_language, diagram',
+            )
             .eq('id', assetId)
             .eq('status', 'published')
             .maybeSingle(),
@@ -170,6 +207,7 @@ export async function agentGetAsset(agent: AgentContext, assetId: string, origin
         code: row.code,
         codeLanguage: row.code_language,
         link: row.url,
+        diagramMarkdown: absolutizeMarkdownLinks(diagramToMarkdown(parseDiagram(row.diagram), row.title), origin),
     }
 }
 

@@ -11,6 +11,7 @@ import { Form, FormItem } from '@/components/ui/Form'
 import { toastError, toastSuccess } from '@/components/ui/toast/toast'
 import { ProductTag } from '@/components/shared/KnowledgeTags'
 import MilestonesEditor from '@/components/shared/MilestonesEditor'
+import ProductLogoField from './ProductLogoField'
 import { apiCreateProduct, apiUpdateProduct } from '@/services/clients'
 import { useAdminProductsStore } from '@/stores/SettingsStores'
 import { getErrorCode } from '@/utils/errors'
@@ -50,6 +51,7 @@ function ProductPreview() {
         name: name?.trim() || 'Product name',
         description: '',
         theme,
+        logoUrl: '',
         milestoneTemplate: [],
         active: true,
         sortOrder: 0,
@@ -73,6 +75,7 @@ const toFormValues = (product: Product | null): ProductInput => ({
     name: product?.name ?? '',
     description: product?.description ?? '',
     theme: product?.theme ?? 'blue',
+    logoUrl: product?.logoUrl ?? '',
     milestoneTemplate: product?.milestoneTemplate ?? [],
     active: product?.active ?? true,
     sortOrder: product?.sortOrder ?? 0,
@@ -280,6 +283,8 @@ export default function ProductDialog({ product, nextSortOrder, onClose }: Produ
                         <p className="-mt-3 mb-4 text-xs text-gray-500">
                             Inactive products are no longer offered in pickers; existing content keeps its label.
                         </p>
+
+                        <ProductLogoField />
 
                         <ProductPreview />
 

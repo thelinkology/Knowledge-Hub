@@ -79,6 +79,9 @@ Only **published** content is returned. Client-scoped keys see that client's kno
 - **Products, intake questions and IF/ELSE rules**: in the app (Administration), seeded by
   `supabase/migrations/20261105000200_reference_data.sql`
 - **BRD templates**: `src/utils/brd.ts` and base milestones in `src/configs/brd.config.ts`
+- **Product logos** (Browse by product cards): Administration → Products → edit → upload a logo
+- **Architecture diagram components** (kinds, colours): `src/@types/library/Diagram.ts` +
+  `src/assets/styles/knowledge/_diagram.css`; the starter template is `glPlanningStarterView()` in `src/utils/diagram.ts`
 
 ## Development
 

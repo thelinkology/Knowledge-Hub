@@ -5,11 +5,13 @@ import LinkButton from '@/components/ui/LinkButton'
 import MarkdownContent from '@/components/shared/MarkdownContent'
 import { AssetKindTag, KeywordTags, ProductTag, PublishStatusTag, ScopeLabel } from '@/components/shared/KnowledgeTags'
 import CodeSnippet from './CodeSnippet'
+import AssetDiagram from './AssetDiagram'
 import { ExternalLinkIcon } from '@/configs/icons.config'
 import { getClientPath } from '@/configs/app.config'
 import { assetKindLabel, type Asset } from '@/@types/library/Asset'
 import { publishStatusLabel } from '@/@types/shared/PublishStatusOptions'
 import { formatDate } from '@/utils/dates'
+import classNames from '@/utils/classNames'
 import type { Product } from '@/@types/products/Product'
 import type { ReactNode } from 'react'
 
@@ -34,17 +36,24 @@ export default function AssetReader({ asset, products, preview }: AssetReaderPro
     const host = asset.url ? linkHost(asset.url) : null
     const product = asset.productId ? products?.find((p) => p.id === asset.productId) : undefined
     const hasCode = asset.code.trim().length > 0
+    // A reference architecture's diagram takes the column's full width; the text keeps a reading width
+    const hasDiagram = asset.kind === 'reference_architecture' && asset.diagram.views.length > 0
+    const prose = hasDiagram ? 'max-w-3xl' : undefined
 
     return (
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
-            <article className="print-full min-w-0 max-w-3xl">
+            <article className={classNames('print-full min-w-0', !hasDiagram && 'max-w-3xl')}>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                     <AssetKindTag kind={asset.kind} />
                     <ProductTag productId={asset.productId} products={products} />
                     {asset.status !== 'published' && <PublishStatusTag status={asset.status} />}
                 </div>
                 <h1 className="text-3xl leading-tight md:text-4xl">{asset.title || 'Untitled asset'}</h1>
-                {asset.summary && <p className="mt-3 text-lg text-gray-600 dark:text-gray-300">{asset.summary}</p>}
+                {asset.summary && (
+                    <p className={classNames('mt-3 text-lg text-gray-600 dark:text-gray-300', prose)}>
+                        {asset.summary}
+                    </p>
+                )}
                 <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-gray-200 pb-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
                     <ScopeLabel clientName={asset.clientName} className="text-sm" />
                     <span>Updated {formatDate(asset.updatedAt)}</span>
@@ -72,7 +81,9 @@ export default function AssetReader({ asset, products, preview }: AssetReaderPro
                     </div>
                 )}
 
-                <section className="mt-8" aria-labelledby="asset-how-to">
+                {hasDiagram && <AssetDiagram diagram={asset.diagram} title={asset.title} preview={preview} />}
+
+                <section className={classNames('mt-8', prose)} aria-labelledby="asset-how-to">
                     <h2 id="asset-how-to" className="mb-3 text-xl">
                         How to use it
                     </h2>
@@ -84,7 +95,7 @@ export default function AssetReader({ asset, products, preview }: AssetReaderPro
                 </section>
 
                 {hasCode && (
-                    <section className="mt-8" aria-labelledby="asset-code">
+                    <section className={classNames('mt-8', prose)} aria-labelledby="asset-code">
                         <h2 id="asset-code" className="mb-3 text-xl">
                             Code
                         </h2>
@@ -123,7 +134,12 @@ export default function AssetReader({ asset, products, preview }: AssetReaderPro
                             {asset.createdByName && ` by ${asset.createdByName}`}
                         </Detail>
                         <Detail label="Includes">
-                            {[asset.url && 'Link', asset.body.trim() && 'Instructions', hasCode && 'Code']
+                            {[
+                                asset.url && 'Link',
+                                hasDiagram && 'Diagram',
+                                asset.body.trim() && 'Instructions',
+                                hasCode && 'Code',
+                            ]
                                 .filter(Boolean)
                                 .join(', ') || 'Nothing yet'}
                         </Detail>

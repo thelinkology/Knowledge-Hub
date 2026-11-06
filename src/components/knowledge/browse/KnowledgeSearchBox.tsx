@@ -18,7 +18,7 @@ interface KnowledgeSearchBoxProps {
 export default function KnowledgeSearchBox({
     defaultValue = '',
     onSearch,
-    placeholder = 'Search articles, scripts, flows, architectures…',
+    placeholder = 'Search articles, scripts, architectures…',
     autoFocus,
     className,
 }: KnowledgeSearchBoxProps) {

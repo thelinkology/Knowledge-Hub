@@ -1,0 +1,267 @@
+/*
+ * Architecture diagrams (components/library/diagram, Diagram.ts): component kind colours, the canvas,
+ * its components (nodes), connections and note banners. Each kind sets two variables that nodes, legend
+ * swatches and the palette read, so components never carry hex values.
+ */
+
+/* ── Component kinds (light) ── */
+.diagram-kind-source_system {
+    --diagram-kind: #4a5670;
+    --diagram-kind-subtle: rgb(74 86 112 / 0.12);
+}
+.diagram-kind-database {
+    --diagram-kind: #0f6cbd;
+    --diagram-kind-subtle: rgb(15 108 189 / 0.1);
+}
+.diagram-kind-cube {
+    --diagram-kind: #7c3aed;
+    --diagram-kind-subtle: rgb(124 58 237 / 0.1);
+}
+.diagram-kind-dimension {
+    --diagram-kind: #0f766e;
+    --diagram-kind-subtle: rgb(15 118 110 / 0.1);
+}
+.diagram-kind-procedure {
+    --diagram-kind: #c2410c;
+    --diagram-kind-subtle: rgb(194 65 12 / 0.1);
+}
+.diagram-kind-fact {
+    --diagram-kind: #15803d;
+    --diagram-kind-subtle: rgb(21 128 61 / 0.1);
+}
+.diagram-kind-report {
+    --diagram-kind: #a16207;
+    --diagram-kind-subtle: rgb(161 98 7 / 0.12);
+}
+.diagram-kind-person {
+    --diagram-kind: #be123c;
+    --diagram-kind-subtle: rgb(190 18 60 / 0.1);
+}
+.diagram-kind-action {
+    --diagram-kind: #4338ca;
+    --diagram-kind-subtle: rgb(67 56 202 / 0.1);
+}
+.diagram-kind-pipeline {
+    --diagram-kind: #0e7490;
+    --diagram-kind-subtle: rgb(14 116 144 / 0.1);
+}
+.diagram-kind-service {
+    --diagram-kind: #a21caf;
+    --diagram-kind-subtle: rgb(162 28 175 / 0.1);
+}
+.diagram-kind-file {
+    --diagram-kind: #4d7c0f;
+    --diagram-kind-subtle: rgb(77 124 15 / 0.12);
+}
+
+/* ── Component kinds (dark: brighter, ≥ 3:1 on gray-800) ── */
+.dark .diagram-kind-source_system {
+    --diagram-kind: #94a3b8;
+    --diagram-kind-subtle: rgb(148 163 184 / 0.16);
+}
+.dark .diagram-kind-database {
+    --diagram-kind: #60a5fa;
+    --diagram-kind-subtle: rgb(96 165 250 / 0.16);
+}
+.dark .diagram-kind-cube {
+    --diagram-kind: #a78bfa;
+    --diagram-kind-subtle: rgb(167 139 250 / 0.16);
+}
+.dark .diagram-kind-dimension {
+    --diagram-kind: #2dd4bf;
+    --diagram-kind-subtle: rgb(45 212 191 / 0.16);
+}
+.dark .diagram-kind-procedure {
+    --diagram-kind: #fb923c;
+    --diagram-kind-subtle: rgb(251 146 60 / 0.16);
+}
+.dark .diagram-kind-fact {
+    --diagram-kind: #4ade80;
+    --diagram-kind-subtle: rgb(74 222 128 / 0.16);
+}
+.dark .diagram-kind-report {
+    --diagram-kind: #facc15;
+    --diagram-kind-subtle: rgb(250 204 21 / 0.16);
+}
+.dark .diagram-kind-person {
+    --diagram-kind: #fb7185;
+    --diagram-kind-subtle: rgb(251 113 133 / 0.16);
+}
+.dark .diagram-kind-action {
+    --diagram-kind: #818cf8;
+    --diagram-kind-subtle: rgb(129 140 248 / 0.16);
+}
+.dark .diagram-kind-pipeline {
+    --diagram-kind: #22d3ee;
+    --diagram-kind-subtle: rgb(34 211 238 / 0.16);
+}
+.dark .diagram-kind-service {
+    --diagram-kind: #e879f9;
+    --diagram-kind-subtle: rgb(232 121 249 / 0.16);
+}
+.dark .diagram-kind-file {
+    --diagram-kind: #a3e635;
+    --diagram-kind-subtle: rgb(163 230 53 / 0.16);
+}
+
+/* Legend and palette swatch */
+.diagram-swatch {
+    @apply inline-block h-3 w-3 shrink-0 rounded-sm;
+    background: var(--diagram-kind);
+}
+
+.diagram-kind-icon {
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-base;
+    color: var(--diagram-kind);
+    background: var(--diagram-kind-subtle);
+}
+
+/* ── The canvas (React Flow, themed through its --xy-* variables) ── */
+.diagram-canvas {
+    --diagram-edge: var(--gray-400);
+    @apply relative overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/60 dark:border-gray-700 dark:bg-gray-900;
+}
+
+.diagram-canvas .react-flow {
+    --xy-background-color: transparent;
+    --xy-background-pattern-dots-color: var(--gray-300);
+    --xy-edge-stroke: var(--diagram-edge);
+    --xy-edge-stroke-width: 1.5;
+    --xy-edge-stroke-selected: var(--primary);
+    --xy-connectionline-stroke: var(--primary);
+    --xy-connectionline-stroke-width: 1.5;
+    --xy-edge-label-background-color: #ffffff;
+    --xy-edge-label-color: var(--gray-700);
+    --xy-handle-background-color: var(--primary);
+    --xy-handle-border-color: #ffffff;
+    --xy-selection-background-color: var(--primary-subtle);
+    --xy-selection-border: 1px dashed var(--primary);
+    --xy-controls-button-background-color: #ffffff;
+    --xy-controls-button-background-color-hover: var(--gray-50);
+    --xy-controls-button-color: var(--gray-700);
+    --xy-controls-button-color-hover: var(--gray-900);
+    --xy-controls-button-border-color: var(--gray-200);
+    --xy-minimap-background-color: #ffffff;
+    --xy-minimap-mask-background-color: rgb(233 237 245 / 0.6);
+    --xy-minimap-node-background-color: var(--gray-200);
+}
+
+.dark .diagram-canvas {
+    --diagram-edge: var(--gray-500);
+}
+
+.dark .diagram-canvas .react-flow {
+    --xy-background-pattern-dots-color: var(--gray-700);
+    --xy-edge-label-background-color: var(--gray-800);
+    --xy-edge-label-color: var(--gray-200);
+    --xy-handle-border-color: var(--gray-800);
+    --xy-controls-button-background-color: var(--gray-800);
+    --xy-controls-button-background-color-hover: var(--gray-700);
+    --xy-controls-button-color: var(--gray-200);
+    --xy-controls-button-color-hover: #ffffff;
+    --xy-controls-button-border-color: var(--gray-700);
+    --xy-minimap-background-color: var(--gray-800);
+    --xy-minimap-mask-background-color: rgb(6 10 20 / 0.6);
+    --xy-minimap-node-background-color: var(--gray-600);
+    --xy-attribution-background-color: rgb(18 26 46 / 0.6);
+}
+
+/* Arrowheads follow the edge colour (the markers carry no colour of their own) */
+.diagram-canvas .react-flow__arrowhead polyline {
+    stroke: var(--diagram-edge);
+    fill: var(--diagram-edge);
+}
+
+.diagram-canvas .react-flow__edge-text {
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.diagram-canvas .react-flow__edge.selected .react-flow__edge-text {
+    fill: var(--primary);
+}
+
+.diagram-canvas .react-flow__controls {
+    @apply overflow-hidden rounded-lg;
+}
+
+.diagram-canvas .react-flow__minimap {
+    @apply overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700;
+}
+
+/* ── Components (custom node) ── */
+.diagram-node {
+    @apply relative flex w-[220px] items-start gap-2 rounded-xl border border-gray-200 bg-white py-2 pr-3 pl-2.5 text-left shadow-sm transition-shadow dark:border-gray-600 dark:bg-gray-800;
+    border-left: 4px solid var(--diagram-kind);
+}
+
+.diagram-node:hover {
+    @apply shadow-md;
+}
+
+.diagram-node-selected {
+    @apply ring-2 ring-primary ring-offset-1 ring-offset-white dark:ring-offset-gray-900;
+}
+
+.diagram-node-label {
+    @apply text-[13px] leading-snug font-semibold break-words text-gray-900 dark:text-gray-100;
+}
+
+.diagram-node-subtitle {
+    @apply mt-0.5 text-[11px] leading-snug break-words text-gray-500 dark:text-gray-400;
+}
+
+/* The numbered build-step badge */
+.diagram-step {
+    @apply flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900;
+}
+
+.diagram-node .diagram-step {
+    @apply absolute -top-3 -right-3 shadow-sm;
+}
+
+/* Handles: shown on hover and selection while editing; invisible (but still anchoring edges) when reading */
+.diagram-node .react-flow__handle {
+    @apply h-2.5 w-2.5 opacity-0 transition-opacity;
+}
+
+.diagram-node:hover .react-flow__handle,
+.diagram-node-selected .react-flow__handle,
+.react-flow__node.selected .diagram-node .react-flow__handle,
+.diagram-canvas .react-flow__handle.connectingto,
+.diagram-canvas .react-flow__handle.connectingfrom {
+    @apply opacity-100;
+}
+
+.diagram-readonly .diagram-node .react-flow__handle {
+    @apply pointer-events-none opacity-0;
+}
+
+.diagram-readonly .react-flow__node {
+    cursor: pointer;
+}
+
+/* ── Notes under the canvas ── */
+.diagram-note {
+    @apply flex items-start gap-2 rounded-xl border px-4 py-3 text-sm text-gray-800 dark:text-gray-100;
+}
+
+.diagram-note-warning {
+    @apply border-gold/40 bg-gold-subtle;
+}
+
+.diagram-note-warning .diagram-note-icon {
+    @apply text-gold;
+}
+
+.diagram-note-info {
+    @apply border-info/30 bg-info-subtle;
+}
+
+.diagram-note-info .diagram-note-icon {
+    @apply text-info;
+}
+
+.diagram-note-icon {
+    @apply mt-0.5 shrink-0 text-base;
+}

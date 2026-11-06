@@ -25,6 +25,17 @@ export const CollectionSchema = z.object({
 })
 export type CollectionInput = z.infer<typeof CollectionSchema>
 
-/** PUT /api/collections/[collectionId]/order */
-export const ReorderSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) })
-export type ReorderInput = z.infer<typeof ReorderSchema>
+/** PUT /api/collections/[collectionId]/tree — where each article sits (parent and position among its siblings) */
+export const ArrangeCollectionSchema = z.object({
+    items: z
+        .array(
+            z.object({
+                id: z.string().uuid(),
+                parentId: z.string().uuid().nullable(),
+                position: z.number().int().min(0).max(10000),
+            }),
+        )
+        .min(1)
+        .max(500),
+})
+export type ArrangeCollectionInput = z.infer<typeof ArrangeCollectionSchema>

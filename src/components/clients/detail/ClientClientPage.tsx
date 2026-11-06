@@ -22,7 +22,6 @@ import { clientsPath, getClientPath, type ClientTab } from '@/configs/app.config
 import { useClientStore, useProductsStore } from '@/stores/AppStores'
 import useSession from '@/utils/hooks/useSession'
 import { usePageBreadcrumbs } from '@/utils/hooks/useBreadcrumbs'
-import useRecordRecentItem from '@/utils/hooks/useRecordRecentItem'
 import classNames from '@/utils/classNames'
 import type { Client } from '@/@types/clients/Client'
 
@@ -37,17 +36,6 @@ export default function ClientClientPage({ clientId }: ClientClientPageProps) {
     const refresh = useClientStore(clientId, (s) => s.refresh)
 
     usePageBreadcrumbs([{ label: 'Clients', href: clientsPath }, { label: client?.name ?? 'Client' }])
-    useRecordRecentItem(
-        client
-            ? {
-                  id: clientId,
-                  kind: 'client',
-                  title: client.name,
-                  subtitle: client.industry || undefined,
-                  href: getClientPath(clientId),
-              }
-            : null,
-    )
 
     if (!client)
         return error ? (

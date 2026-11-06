@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArticleKindTag, ProductTag, PublishStatusTag, ScopeLabel } from '@/components/shared/KnowledgeTags'
-import navigationIcon from '@/configs/icons.config'
+import navigationIcon, { SubArticleIcon } from '@/configs/icons.config'
 import { getArticlePath } from '@/configs/app.config'
 import { articleKindIcon } from '@/@types/knowledge/ArticleKindOptions'
 import { formatDate } from '@/utils/dates'
@@ -38,6 +38,14 @@ export default function ArticleList({ articles, products, compact, className }: 
                             </Link>
                             {article.status !== 'published' && <PublishStatusTag status={article.status} />}
                         </div>
+                        {article.parentId && article.parentTitle && (
+                            <Link
+                                href={getArticlePath(article.parentId)}
+                                className="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-primary hover:underline"
+                            >
+                                <SubArticleIcon aria-hidden /> in {article.parentTitle}
+                            </Link>
+                        )}
                         {article.summary && (
                             <p className="mt-0.5 line-clamp-2 text-sm text-gray-600 dark:text-gray-400">
                                 {article.summary}

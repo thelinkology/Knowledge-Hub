@@ -51,6 +51,16 @@ export interface AgentArticle {
     url: string
     /** The article body (Markdown) */
     content: string
+    /** The article it sits under in the table of contents (published only), or null at the top level */
+    parent: AgentArticleRef | null
+    /** Its published sub-articles, in reading order */
+    children: (AgentArticleRef & { summary: string })[]
+}
+
+export interface AgentArticleRef {
+    id: string
+    title: string
+    url: string
 }
 
 export interface AgentAsset {
@@ -70,6 +80,11 @@ export interface AgentAsset {
     codeLanguage: string
     /** Where the asset lives (repository, SharePoint …), or '' */
     link: string
+    /**
+     * A reference architecture's diagram as Markdown (views, components by kind, connections, build sequence
+     * with guidance, notes), or '' when it has no diagram
+     */
+    diagramMarkdown: string
 }
 
 export interface AgentClient {

@@ -23,10 +23,12 @@ interface NewArticleDialogProps {
     onClose: () => void
     /** Preselects this collection (and its client and product) */
     collection?: KnowledgeCollection | null
+    /** Creates a sub-article under this article (of `collection`); the collection is then fixed */
+    parent?: { id: string; title: string } | null
 }
 
 /** Starts a draft article (title, type and where it lives); the editor opens next */
-export default function NewArticleDialog({ onClose, collection }: NewArticleDialogProps) {
+export default function NewArticleDialog({ onClose, collection, parent }: NewArticleDialogProps) {
     const router = useRouter()
     const collections = useSWRCollections({})
     const clients = useSWRClients()
@@ -74,7 +76,7 @@ export default function NewArticleDialog({ onClose, collection }: NewArticleDial
 
     const onValid = async (values: NewArticleFormData) => {
         try {
-            const article = await apiCreateArticle(toNewArticleInput(values))
+            const article = await apiCreateArticle(toNewArticleInput(values, parent?.id ?? null))
             toastSuccess('Draft created. Write the content, then publish it.', { duration: 4000 })
             router.push(getArticleEditPath(article.id))
         } catch (error) {
@@ -87,7 +89,7 @@ export default function NewArticleDialog({ onClose, collection }: NewArticleDial
             isOpen
             onClose={onClose}
             type="info"
-            title="New article"
+            title={parent ? 'New sub-article' : 'New article'}
             confirmText="Create and edit"
             confirmForm={FORM_ID}
             loading={isSubmitting}
@@ -143,6 +145,7 @@ export default function NewArticleDialog({ onClose, collection }: NewArticleDial
                                     inputId="new-article-collection"
                                     options={collectionOptions}
                                     isLoading={collections.isLoading}
+                                    isDisabled={!!parent}
                                     value={
                                         collectionOptions.find((o) => o.value === field.value) ?? collectionOptions[0]
                                     }
@@ -154,6 +157,11 @@ export default function NewArticleDialog({ onClose, collection }: NewArticleDial
                             )}
                         />
                     </FormItem>
+                    {parent && (
+                        <p className="-mt-3 mb-4 text-xs text-gray-500">
+                            It’s added at the end of the sub-articles of “{parent.title}”, in the same collection.
+                        </p>
+                    )}
                     <div className="grid gap-x-4 sm:grid-cols-2">
                         <FormItem label="Client" htmlFor="new-article-client">
                             <Controller

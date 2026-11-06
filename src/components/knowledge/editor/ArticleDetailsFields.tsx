@@ -1,15 +1,21 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Controller, useFormContext, useWatch } from 'react-hook-form'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { FormItem } from '@/components/ui/Form'
 import { ARTICLE_FIELD_IDS } from './articleForm'
+import { useSWRCollection } from '@/services/knowledge'
+import { buildTree, descendantIdsOf, flattenTree } from '@/utils/articleTree'
 import { ARTICLE_KINDS, articleKindDescription, articleKindLabel } from '@/@types/knowledge/ArticleKindOptions'
 import { AUDIENCES, audienceLabel } from '@/@types/shared/PublishStatusOptions'
 import type { ArticleFormData } from '@/@types/knowledge/forms/ArticleFormData'
 import type { ArticleEditorData } from '@/@types/knowledge/ArticleEditor'
+import type { ArticleTreeEntry } from '@/@types/knowledge/Article'
 
+/** Indents sub-articles in the parent picker (kept by the menu and the selected value) */
+const EM_SPACE = '\u2003'
 const KIND_OPTIONS = ARTICLE_KINDS.map((kind) => ({ value: kind, label: articleKindLabel[kind] }))
 const AUDIENCE_OPTIONS = AUDIENCES.map((audience) => ({ value: audience, label: audienceLabel[audience] }))
 
@@ -67,9 +73,12 @@ export function ArticleTitleFields() {
 export default function ArticleDetailsFields({ data }: ArticleDetailsFieldsProps) {
     const {
         control,
+        setValue,
         formState: { errors },
     } = useFormContext<ArticleFormData>()
     const kind = useWatch({ control, name: 'kind' })
+    const collectionId = useWatch({ control, name: 'collectionId' })
+    const parentOptions = useParentOptions(data, collectionId)
 
     const collectionOptions = [
         { value: '', label: 'Not in a collection' },
@@ -129,11 +138,38 @@ export default function ArticleDetailsFields({ data }: ArticleDetailsFieldsProps
                             inputId="article-collection"
                             options={collectionOptions}
                             value={collectionOptions.find((o) => o.value === field.value) ?? collectionOptions[0]}
+                            onChange={(option) => {
+                                field.onChange(option?.value ?? '')
+                                // A parent belongs to one collection: choosing another collection resets it
+                                setValue('parentId', '', { shouldDirty: true })
+                            }}
+                        />
+                    )}
+                />
+            </FormItem>
+            <FormItem label="Parent article" htmlFor="article-parent">
+                <Controller
+                    name="parentId"
+                    control={control}
+                    render={({ field }) => (
+                        <Select
+                            inputId="article-parent"
+                            options={parentOptions.options}
+                            isLoading={parentOptions.loading}
+                            isDisabled={!collectionId}
+                            value={
+                                parentOptions.options.find((o) => o.value === field.value) ?? parentOptions.options[0]
+                            }
                             onChange={(option) => field.onChange(option?.value ?? '')}
                         />
                     )}
                 />
             </FormItem>
+            <p className="-mt-3 mb-4 text-xs text-gray-500">
+                {collectionId
+                    ? 'Nest it under another article of the collection, like a chapter’s sections.'
+                    : 'Only articles in a collection can be sub-articles.'}
+            </p>
             <FormItem label="Client" htmlFor="article-client">
                 <Controller
                     name="clientId"
@@ -185,4 +221,42 @@ export default function ArticleDetailsFields({ data }: ArticleDetailsFieldsProps
             <p className="-mt-3 text-xs text-gray-500">Separate tags with commas.</p>
         </>
     )
+}
+
+/**
+ * The parent choices: the chosen collection's articles in reading order, indented by depth, without the
+ * article itself and its sub-articles. The saved collection comes with the editor data; another one is
+ * loaded when picked.
+ */
+function useParentOptions(data: ArticleEditorData, collectionId: string) {
+    const { article } = data
+    const sameCollection = !!collectionId && collectionId === article.collectionId
+    const other = useSWRCollection(collectionId && !sameCollection ? collectionId : null)
+    const entries: ArticleTreeEntry[] = useMemo(
+        () =>
+            sameCollection
+                ? data.collectionArticles
+                : (other.data?.articles ?? []).map((a) => ({
+                      id: a.id,
+                      title: a.title,
+                      summary: a.summary,
+                      status: a.status,
+                      parentId: a.parentId,
+                      position: a.position,
+                  })),
+        [sameCollection, data.collectionArticles, other.data],
+    )
+    const options = useMemo(() => {
+        const excluded = new Set([article.id, ...descendantIdsOf(entries, article.id)])
+        return [
+            { value: '', label: 'None (top level)' },
+            ...flattenTree(buildTree(entries))
+                .filter((entry) => !excluded.has(entry.item.id))
+                .map((entry) => ({
+                    value: entry.item.id,
+                    label: `${EM_SPACE.repeat(entry.depth)}${entry.item.title}${entry.item.status === 'published' ? '' : ` (${entry.item.status})`}`,
+                })),
+        ]
+    }, [entries, article.id])
+    return { options, loading: !sameCollection && !!collectionId && other.isLoading }
 }

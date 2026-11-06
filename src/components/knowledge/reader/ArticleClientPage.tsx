@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import LinkButton from '@/components/ui/LinkButton'
 import Button from '@/components/ui/Button'
 import ErrorState from '@/components/shared/ErrorState'
@@ -10,7 +11,7 @@ import { getArticleEditPath, getArticlePath, getCollectionPath, knowledgePath } 
 import { useArticleViewStore, useProductsStore } from '@/stores/AppStores'
 import useSession from '@/utils/hooks/useSession'
 import { usePageBreadcrumbs } from '@/utils/hooks/useBreadcrumbs'
-import useRecordRecentItem from '@/utils/hooks/useRecordRecentItem'
+import { ancestorsOf } from '@/utils/articleTree'
 
 interface ArticleClientPageProps {
     articleId: string
@@ -24,22 +25,19 @@ export default function ArticleClientPage({ articleId }: ArticleClientPageProps)
     const refresh = useArticleViewStore(articleId, (s) => s.refresh)
     const products = useProductsStore((s) => s.data)
 
+    const collection = view?.collection ?? null
+    const ancestors = useMemo(
+        () => (collection ? ancestorsOf(collection.articles, articleId) : []),
+        [collection, articleId],
+    )
+
+    // Knowledge › Collection › Parent › … › Article
     usePageBreadcrumbs([
         { label: 'Knowledge', href: knowledgePath },
         ...(view?.collection ? [{ label: view.collection.title, href: getCollectionPath(view.collection.id) }] : []),
+        ...ancestors.map((a) => ({ label: a.title, href: getArticlePath(a.id) })),
         { label: view?.article.title ?? 'Article' },
     ])
-    useRecordRecentItem(
-        view
-            ? {
-                  id: articleId,
-                  kind: 'article',
-                  title: view.article.title,
-                  subtitle: view.collection?.title,
-                  href: getArticlePath(articleId),
-              }
-            : null,
-    )
 
     if (!view)
         return error ? (

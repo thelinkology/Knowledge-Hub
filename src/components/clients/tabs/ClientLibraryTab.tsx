@@ -40,8 +40,8 @@ export default function ClientLibraryTab({ client }: ClientLibraryTabProps) {
         <>
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Scripts, flows, architectures and demo assets made for {client.name}. Reusable ones for every client
-                    are in the{' '}
+                    Scripts, architectures and demo assets made for {client.name}. Reusable ones for every client are in
+                    the{' '}
                     <Link href={libraryPath} className="text-primary hover:underline">
                         Library
                     </Link>
@@ -60,8 +60,8 @@ export default function ClientLibraryTab({ client }: ClientLibraryTabProps) {
                                 title="No assets for this client yet"
                                 description={
                                     canManage
-                                        ? `Keep ${client.name}’s scripts, flows and demo assets here so the next person on the account can reuse them.`
-                                        : `Editors keep ${client.name}’s scripts, flows and demo assets here.`
+                                        ? `Keep ${client.name}’s scripts, architectures and demo assets here so the next person on the account can reuse them.`
+                                        : `Editors keep ${client.name}’s scripts, architectures and demo assets here.`
                                 }
                                 action={newButton || undefined}
                             />

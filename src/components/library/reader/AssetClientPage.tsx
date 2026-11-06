@@ -6,13 +6,11 @@ import ErrorState from '@/components/shared/ErrorState'
 import Loading from '@/components/shared/Loading'
 import AssetReader from './AssetReader'
 import { EditIcon, PrintIcon } from '@/configs/icons.config'
-import { getAssetEditPath, getAssetPath, libraryPath } from '@/configs/app.config'
+import { getAssetEditPath, libraryPath } from '@/configs/app.config'
 import { useProductsStore } from '@/stores/AppStores'
 import { useAssetStore } from '@/stores/LibraryStores'
-import { assetKindLabel } from '@/@types/library/Asset'
 import useSession from '@/utils/hooks/useSession'
 import { usePageBreadcrumbs } from '@/utils/hooks/useBreadcrumbs'
-import useRecordRecentItem from '@/utils/hooks/useRecordRecentItem'
 
 interface AssetClientPageProps {
     assetId: string
@@ -27,17 +25,6 @@ export default function AssetClientPage({ assetId }: AssetClientPageProps) {
     const products = useProductsStore((s) => s.data)
 
     usePageBreadcrumbs([{ label: 'Library', href: libraryPath }, { label: asset?.title ?? 'Asset' }])
-    useRecordRecentItem(
-        asset
-            ? {
-                  id: assetId,
-                  kind: 'asset',
-                  title: asset.title,
-                  subtitle: assetKindLabel[asset.kind],
-                  href: getAssetPath(assetId),
-              }
-            : null,
-    )
 
     if (!asset)
         return error ? (

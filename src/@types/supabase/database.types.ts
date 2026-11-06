@@ -126,6 +126,7 @@ export type Database = {
                     created_at: string
                     updated_at: string
                     search: unknown | null
+                    parent_id: string | null
                 }
                 Insert: {
                     id?: string
@@ -147,6 +148,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                     search?: unknown | null
+                    parent_id?: string | null
                 }
                 Update: {
                     id?: string
@@ -168,6 +170,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                     search?: unknown | null
+                    parent_id?: string | null
                 }
                 Relationships: [
                     {
@@ -189,6 +192,13 @@ export type Database = {
                         columns: ['created_by']
                         isOneToOne: false
                         referencedRelation: 'profiles'
+                        referencedColumns: ['id']
+                    },
+                    {
+                        foreignKeyName: 'articles_parent_id_fkey'
+                        columns: ['parent_id']
+                        isOneToOne: false
+                        referencedRelation: 'articles'
                         referencedColumns: ['id']
                     },
                     {
@@ -679,6 +689,7 @@ export type Database = {
                     created_at: string
                     updated_at: string
                     search: unknown | null
+                    diagram: Json
                 }
                 Insert: {
                     id?: string
@@ -698,6 +709,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                     search?: unknown | null
+                    diagram?: Json
                 }
                 Update: {
                     id?: string
@@ -717,6 +729,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                     search?: unknown | null
+                    diagram?: Json
                 }
                 Relationships: [
                     {
@@ -761,6 +774,7 @@ export type Database = {
                     sort_order: number
                     created_at: string
                     updated_at: string
+                    logo_url: string
                 }
                 Insert: {
                     id?: string
@@ -773,6 +787,7 @@ export type Database = {
                     sort_order?: number
                     created_at?: string
                     updated_at?: string
+                    logo_url?: string
                 }
                 Update: {
                     id?: string
@@ -785,6 +800,7 @@ export type Database = {
                     sort_order?: number
                     created_at?: string
                     updated_at?: string
+                    logo_url?: string
                 }
                 Relationships: []
             }
@@ -883,7 +899,7 @@ export type Database = {
         Enums: {
             app_role: 'viewer' | 'editor' | 'admin'
             article_kind: 'concept' | 'how_to' | 'tutorial' | 'reference' | 'troubleshooting' | 'best_practice'
-            asset_kind: 'script' | 'flow' | 'reference_architecture' | 'demo_asset' | 'component' | 'template'
+            asset_kind: 'script' | 'reference_architecture' | 'demo_asset' | 'component' | 'template'
             audience: 'internal' | 'customer'
             brd_status: 'draft' | 'final'
             client_status: 'prospect' | 'active' | 'inactive'
